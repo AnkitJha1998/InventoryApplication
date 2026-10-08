@@ -1,0 +1,6 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+inventory-service:
+  base-url: http://localhost:8081

@@ -1,0 +1,21 @@
+server:
+  port: ${SERVER_PORT:8081}
+spring:
+  application:
+    name: inventory-service
+  datasource:
+    url: ${AZURE_POSTGRES_URL}
+    username: ${AZURE_DB_USERNAME}
+    password: ${AZURE_DB_PASSWORD}
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${AZURE_KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+outbox:
+  poll-ms: ${OUTBOX_POLL_MS:1000}
+  batch-size: ${OUTBOX_BATCH_SIZE:20}
+  lease-seconds: ${OUTBOX_LEASE_SECONDS:60}

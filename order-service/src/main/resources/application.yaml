@@ -1,0 +1,7 @@
+server:
+  port: ${SERVER_PORT:8080}
+spring:
+  application:
+    name: order-service
+inventory-service:
+  base-url: ${AZURE_INVENTORY_SERVICE_URL}
