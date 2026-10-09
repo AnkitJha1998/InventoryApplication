@@ -1,5 +1,7 @@
 package com.example.inventory.service;
 
+import com.example.inventory.api.CreateRequest;
+import com.example.inventory.api.CreateResponse;
 import com.example.inventory.api.IncreaseRequest;
 import com.example.inventory.api.IncreaseResponse;
 import com.example.inventory.api.ReductionRequest;
@@ -31,6 +33,33 @@ public class InventoryServiceImpl implements InventoryService {
         this.inventoryRepository = inventoryRepository;
         this.operationRepository = operationRepository;
         this.outboxRepository = outboxRepository;
+    }
+
+    @Override
+    @Transactional(rollbackFor = BusinessException.class)
+    public CreateResponse create(CreateRequest request) throws BusinessException {
+        validateCreation(request);
+        if (inventoryRepository.existsById(request.productId())) {
+            throw new BusinessException("inventory item already exists");
+        }
+
+        Instant occurredAt = Instant.now();
+        Inventory inventory = Inventory.builder()
+                .productId(request.productId())
+                .productName(request.productName())
+                .productType(request.productType())
+                .availableCount(request.quantity())
+                .version(1)
+                .updatedAt(occurredAt)
+                .build();
+        inventoryRepository.save(inventory);
+        saveOutbox(inventory, 0, request.quantity(), 1, occurredAt);
+        return new CreateResponse(
+                inventory.getProductId(),
+                inventory.getProductName(),
+                inventory.getProductType(),
+                inventory.getAvailableCount(),
+                inventory.getVersion());
     }
 
     @Override
@@ -135,6 +164,20 @@ public class InventoryServiceImpl implements InventoryService {
                         .retryCount(0)
                         .createdAt(occurredAt)
                         .build());
+    }
+
+    private void validateCreation(CreateRequest request) throws BusinessException {
+        if (request == null) {
+            throw new BusinessException("request is required");
+        }
+        if (blank(request.productId())
+                || blank(request.productName())
+                || blank(request.productType())) {
+            throw new BusinessException("productId, productName and productType are required");
+        }
+        if (request.quantity() == null || request.quantity() <= 0) {
+            throw new BusinessException("quantity must be greater than zero");
+        }
     }
 
     private void validateReduction(ReductionRequest request) throws BusinessException {

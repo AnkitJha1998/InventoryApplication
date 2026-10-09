@@ -58,6 +58,19 @@ Required scenarios:
 - A Kafka consumer failure allows the event to be redelivered safely.
 - Catalogue results are ordered by most recently updated.
 
+## Flow 3.5.1: Inventory creation
+
+The Flow 3.5.1 implementation must add scenarios for:
+
+- A STORE_MANAGER can create inventory and receives HTTP 200 with version `1`.
+- A CUSTOMER receives `403` for inventory creation.
+- Missing, malformed, invalid, or expired JWTs receive `401`.
+- Missing or invalid product fields and non-positive quantity receive `400` without side effects.
+- A duplicate product receives `400` without changing inventory or creating an additional event.
+- The initial inventory row and its single `InventoryUpdate` Outbox event commit atomically.
+- A transaction failure rolls back both the new inventory row and its Outbox event.
+- The first event creates a Couchbase document with version `1` and the initial available quantity.
+
 ## Flow 3.5: Versioned inventory events and increase
 
 The Flow 3.5 implementation must add scenarios for:

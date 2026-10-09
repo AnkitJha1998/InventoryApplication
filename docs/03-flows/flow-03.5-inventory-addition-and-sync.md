@@ -1,8 +1,8 @@
-\# Flow 3.5 - Inventory Addition and CQRS Synchronization
+# Flow 3.5 - Inventory Addition and CQRS Synchronization
 
 
 
-\## Purpose
+## Purpose
 
 
 
@@ -10,39 +10,39 @@ Implement inventory addition and complete the versioned event pipeline that sync
 
 
 
-\## Scope
+## Scope
 
 
 
-\* Inventory addition API.
+* Inventory addition API.
 
-\* `STORE\_MANAGER` authorization.
+* `STORE_MANAGER` authorization.
 
-\* Rejection of `CUSTOMER` inventory addition requests.
+* Rejection of `CUSTOMER` inventory addition requests.
 
-\* PostgreSQL as the authoritative inventory store and version source.
+* PostgreSQL as the authoritative inventory store and version source.
 
-\* Atomic inventory version increments.
+* Atomic inventory version increments.
 
-\* Versioned `InventoryUpdate` events persisted through the transactional Outbox.
+* Versioned `InventoryUpdate` events persisted through the transactional Outbox.
 
-\* Asynchronous publication to `InventoryUpdates`.
+* Asynchronous publication to `InventoryUpdate`.
 
-\* Version-aware Couchbase synchronization.
+* Version-aware Couchbase synchronization.
 
-\* Duplicate, stale, and out-of-order event handling.
+* Duplicate, stale, and out-of-order event handling.
 
-\* End-to-end verification of inventory additions and reductions.
+* End-to-end verification of inventory additions and reductions.
 
 
 
-\## Flow
+## Flow
 
 
 
 ```
 
-STORE\_MANAGER
+STORE_MANAGER
 
 &#x20;    |
 
@@ -88,7 +88,7 @@ Outbox Publisher
 
 &#x20;    v
 
-Kafka: InventoryUpdates
+Kafka: InventoryUpdate
 
 &#x20;    |
 
@@ -114,135 +114,132 @@ Inventory Query APIs
 
 
 
-\## Processing Rules
+## Processing Rules
 
 
 
-\### Inventory Addition
+### Inventory Addition
 
 
 
-\* Inventory Service exposes the inventory addition endpoint.
+* Inventory Service exposes the inventory addition endpoint.
 
-\* Only `STORE\_MANAGER` may add inventory.
+* Only `STORE_MANAGER` may add inventory.
 
-\* `CUSTOMER` requests must be rejected with `403 Forbidden`.
+* `CUSTOMER` requests must be rejected with `403 Forbidden`.
 
-\* Missing or invalid JWTs must be rejected with `401 Unauthorized`.
+* Missing or invalid JWTs must be rejected with `401 Unauthorized`.
 
-\* Quantity must be greater than zero.
+* Quantity must be greater than zero.
 
-\* Inventory addition must update PostgreSQL, not Couchbase.
+* Inventory addition must update PostgreSQL, not Couchbase.
 
-\* Rejected requests must not change inventory, increment its version, or create an Outbox event.
+* Rejected requests must not change inventory, increment its version, or create an Outbox event.
 
 
 
-\### Inventory Versioning
+### Inventory Versioning
 
 
 
-\* PostgreSQL is authoritative for both inventory quantity and version.
+* PostgreSQL is authoritative for both inventory quantity and version.
 
-\* Each product has a monotonically increasing inventory version.
+* Each product has a monotonically increasing inventory version.
 
-\* Each successful inventory quantity change that generates an `InventoryUpdate` increments the version exactly once.
+* Each successful inventory quantity change that generates an `InventoryUpdate` increments the version exactly once.
 
-\* Quantity and version changes must be atomic.
+* Quantity and version changes must be atomic.
 
-\* Concurrent updates to the same product must not generate conflicting versions.
+* Concurrent updates to the same product must not generate conflicting versions.
 
-\* Inventory state, applicable operation records, and Outbox events must be committed in the same PostgreSQL transaction.
+* Inventory state, applicable operation records, and Outbox events must be committed in the same PostgreSQL transaction.
 
-\* A failed transaction must not leave partial state or an orphaned event.
+* A failed transaction must not leave partial state or an orphaned event.
 
 
 
-\### Outbox and Kafka
+### Outbox and Kafka
 
 
 
-\* Persist the `InventoryUpdate` event, including its version, in the Outbox transaction.
+* Persist the `InventoryUpdate` event, including its version, in the Outbox transaction.
 
-\* Publish the persisted event to the exact topic `InventoryUpdates`.
+* Publish the persisted event to the exact topic `InventoryUpdate`.
 
-\* The publisher must not generate or change inventory versions.
+* The publisher must not generate or change inventory versions.
 
-\* Retries must preserve the event ID, product ID, resulting quantity, and version.
+* Retries must preserve the event ID, product ID, resulting quantity, and version.
 
-\* Kafka unavailability must not lose committed inventory changes or pending Outbox events.
+* Kafka unavailability must not lose committed inventory changes or pending Outbox events.
 
-\* Delivery is at least once; duplicate delivery is expected.
+* Delivery is at least once; duplicate delivery is expected.
 
 
 
-\### Couchbase Synchronization
+### Couchbase Synchronization
 
 
 
-\* The consumer reads `InventoryUpdate` events from `InventoryUpdates`.
+* The consumer reads `InventoryUpdate` events from `InventoryUpdate`.
 
-\* Couchbase is a read model; PostgreSQL remains the source of truth.
+* Couchbase is a read model; PostgreSQL remains the source of truth.
 
-\* Apply an incoming event only if its version is newer than the stored version.
+* Apply an incoming event only if its version is newer than the stored version.
 
-\* Duplicate, stale, or out-of-order events must not regress inventory state.
+* Duplicate, stale, or out-of-order events must not regress inventory state.
 
-\* Version comparison and document update must be atomic.
+* Version comparison and document update must be atomic.
 
-\* Retain the applied version in each Couchbase inventory document.
+* Retain the applied version in each Couchbase inventory document.
 
-\* A consumer must not acknowledge an event before the update succeeds or the event is safely classified as duplicate or stale.
+* A consumer must not acknowledge an event before the update succeeds or the event is safely classified as duplicate or stale.
 
-\* Query APIs continue reading from Couchbase.
+* Query APIs continue reading from Couchbase.
 
 
 
-\## Verification
+## Verification
 
 
 
-\* A `STORE\_MANAGER` can add inventory.
+* A `STORE_MANAGER` can add inventory.
 
-\* A `CUSTOMER` cannot add inventory.
+* A `CUSTOMER` cannot add inventory.
 
-\* Missing or invalid JWTs are rejected.
+* Missing or invalid JWTs are rejected.
 
-\* Invalid quantities are rejected without side effects.
+* Invalid quantities are rejected without side effects.
 
-\* Inventory additions and reductions update PostgreSQL and increment versions correctly.
+* Inventory additions and reductions update PostgreSQL and increment versions correctly.
 
-\* The committed PostgreSQL version matches the version in the Outbox event.
+* The committed PostgreSQL version matches the version in the Outbox event.
 
-\* Inventory state and its Outbox event roll back together on transaction failure.
+* Inventory state and its Outbox event roll back together on transaction failure.
 
-\* Concurrent changes to the same product receive distinct, correctly ordered versions.
+* Concurrent changes to the same product receive distinct, correctly ordered versions.
 
-\* Outbox retries preserve the original event ID and version.
+* Outbox retries preserve the original event ID and version.
 
-\* Events are published to `InventoryUpdates`.
+* Events are published to `InventoryUpdate`.
 
-\* Couchbase reflects both additions and reductions.
+* Couchbase reflects both additions and reductions.
 
-\* Duplicate, stale, and out-of-order events cannot overwrite newer state.
+* Duplicate, stale, and out-of-order events cannot overwrite newer state.
 
-\* A Couchbase failure does not silently lose an event.
+* A Couchbase failure does not silently lose an event.
 
-\* The inventory query APIs return the synchronized quantity and version.
+* The inventory query APIs return the synchronized quantity and version.
 
 
 
-\## Out of Scope
+## Out of Scope
 
 
 
-\* Notification triggers and back-in-stock processing.
+* Notification triggers and back-in-stock processing.
 
-\* Notification delivery.
+* Notification delivery.
 
-\* Full order persistence and lifecycle management.
+* Full order persistence and lifecycle management.
 
-\* Replacing the transactional Outbox with CDC or Debezium.
-
-
-
+* Replacing the transactional Outbox with CDC or Debezium.

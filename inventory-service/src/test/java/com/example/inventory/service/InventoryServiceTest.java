@@ -1,5 +1,6 @@
 package com.example.inventory.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -7,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.example.inventory.api.CreateRequest;
 import com.example.inventory.api.IncreaseRequest;
 import com.example.inventory.api.ReductionRequest;
 import com.example.inventory.persistence.entity.InventoryOperation;
@@ -92,6 +94,59 @@ class InventoryServiceTest {
         () ->
             new InventoryServiceImpl(inventory, operations, mock(OutboxEventRepository.class))
                 .reduce(new ReductionRequest("o", "p", 3)));
+  }
+
+  @Test
+  void createsInitialInventoryVersionAndOutboxEvent() throws Exception {
+    InventoryRepository inventory = mock(InventoryRepository.class);
+    OutboxEventRepository outbox = mock(OutboxEventRepository.class);
+
+    var response =
+        new InventoryServiceImpl(inventory, mock(InventoryOperationRepository.class), outbox)
+            .create(new CreateRequest("p", "Product", "STANDARD", 5));
+
+    assertEquals(1, response.version());
+    assertEquals(5, response.availableQuantity());
+    org.mockito.ArgumentCaptor<com.example.inventory.persistence.entity.OutboxEvent> event =
+        org.mockito.ArgumentCaptor.forClass(
+            com.example.inventory.persistence.entity.OutboxEvent.class);
+    org.mockito.Mockito.verify(outbox).save(event.capture());
+    assertEquals(1, event.getValue().getVersion());
+    assertEquals("p", event.getValue().getProductId());
+    assertEquals("Product", event.getValue().getProductName());
+    assertEquals("STANDARD", event.getValue().getProductType());
+    assertEquals(5, event.getValue().getCurrentCount());
+    assertEquals("InventoryUpdate", event.getValue().getTopic());
+    org.junit.jupiter.api.Assertions.assertNotNull(event.getValue().getEventId());
+    org.junit.jupiter.api.Assertions.assertNotNull(event.getValue().getOccurredAt());
+  }
+
+  @Test
+  void duplicateCreationIsRejectedWithoutWritingOutbox() {
+    InventoryRepository inventory = mock(InventoryRepository.class);
+    OutboxEventRepository outbox = mock(OutboxEventRepository.class);
+    when(inventory.existsById("p")).thenReturn(true);
+
+    assertThrows(
+        BusinessException.class,
+        () ->
+            new InventoryServiceImpl(inventory, mock(InventoryOperationRepository.class), outbox)
+                .create(new CreateRequest("p", "Product", "STANDARD", 5)));
+    org.mockito.Mockito.verify(inventory, org.mockito.Mockito.never()).save(any());
+    org.mockito.Mockito.verifyNoInteractions(outbox);
+  }
+
+  @Test
+  void invalidCreationDoesNotWriteInventoryOrOutbox() {
+    InventoryRepository inventory = mock(InventoryRepository.class);
+    OutboxEventRepository outbox = mock(OutboxEventRepository.class);
+
+    assertThrows(
+        BusinessException.class,
+        () ->
+            new InventoryServiceImpl(inventory, mock(InventoryOperationRepository.class), outbox)
+                .create(new CreateRequest("p", "Product", "STANDARD", 0)));
+    org.mockito.Mockito.verifyNoInteractions(inventory, outbox);
   }
 
   @Test

@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.inventory.service.InventoryQueryService;
@@ -12,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -20,8 +21,34 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc(addFilters = false)
 class InventoryControllerTest {
   @Autowired MockMvc mvc;
-  @MockBean InventoryService service;
-  @MockBean InventoryQueryService queryService;
+  @MockitoBean InventoryService service;
+  @MockitoBean InventoryQueryService queryService;
+
+  @Test
+  void createsInventoryWithInitialVersion() throws Exception {
+    when(service.create(any())).thenReturn(
+        new CreateResponse("p", "Product", "STANDARD", 5, 1));
+
+    mvc.perform(
+            post("/inventory/create")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"productId\":\"p\",\"productName\":\"Product\","
+                        + "\"productType\":\"STANDARD\",\"quantity\":5}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.productId").value("p"))
+        .andExpect(jsonPath("$.availableQuantity").value(5))
+        .andExpect(jsonPath("$.version").value(1));
+  }
+
+  @Test
+  void rejectsInvalidCreationRequest() throws Exception {
+    mvc.perform(
+            post("/inventory/create")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"productId\":\"p\",\"productName\":\"\","
+                        + "\"productType\":\"STANDARD\",\"quantity\":0}"))
+        .andExpect(status().isBadRequest());
+  }
 
   @Test
   void reducesWithValidRequest() throws Exception {

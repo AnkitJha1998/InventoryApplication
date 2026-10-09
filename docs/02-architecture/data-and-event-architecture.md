@@ -114,9 +114,9 @@ The persisted Outbox event must include the inventory version. If the Outbox sch
 
 The Outbox Publisher publishes the persisted event; it does not generate versions.
 
-### InventoryUpdates
+### InventoryUpdate
 
-The `InventoryUpdates` topic carries versioned inventory changes to the Inventory query consumer.
+The `InventoryUpdate` topic carries versioned inventory changes to the Inventory query consumer.
 
 The event includes the event ID, product ID, resulting available quantity, version, and event timestamp.
 
@@ -131,3 +131,14 @@ Kafka delivery is at least once, so the consumer must be idempotent.
 ### Scope Boundary
 
 Flow 3.5 implements inventory addition and version-aware synchronization of inventory additions and reductions. Notification processing is specified separately in Flow 4.
+
+
+## NotificationTrigger Event
+
+- Kafka topic: `NotificationTrigger`
+- Producer: Inventory Service Outbox Publisher
+- Consumer: Notification Service
+- Trigger condition: Existing inventory quantity transitions from zero to positive.
+- Include `eventId`, `productId`, `availableQuantity`, `version`, and `eventTimestamp`.
+- Persist the event in the same PostgreSQL transaction as the inventory update.
+- Consumers must handle duplicate event delivery idempotently.

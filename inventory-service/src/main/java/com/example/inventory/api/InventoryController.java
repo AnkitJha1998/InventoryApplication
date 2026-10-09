@@ -34,6 +34,12 @@ public class InventoryController {
         this.queryService = queryService;
     }
 
+    @PostMapping("/create")
+    public ResponseEntity<CreateResponse> create(@Valid @RequestBody CreateRequest request)
+            throws BusinessException {
+        return ResponseEntity.ok(service.create(request));
+    }
+
     @PostMapping("/reduce")
     public ResponseEntity<ReductionResponse> reduce(@Valid @RequestBody ReductionRequest request)
             throws BusinessException {

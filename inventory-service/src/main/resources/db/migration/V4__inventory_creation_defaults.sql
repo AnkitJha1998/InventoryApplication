@@ -1,0 +1,2 @@
+ALTER TABLE inventory
+    ALTER COLUMN version SET DEFAULT 1;

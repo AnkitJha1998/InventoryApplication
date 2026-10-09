@@ -283,7 +283,42 @@ Failure:
 - Query results may temporarily lag behind the PostgreSQL source of truth because the read model is updated asynchronously.
 
 
-## 9. Increase Inventory
+## 9. Create Inventory
+
+`POST /inventory/create`
+
+Authentication: JWT required.
+
+Authorization: `STORE_MANAGER` only.
+
+Request:
+
+```
+{
+  "productId": "P1001",
+  "productName": "Example Product",
+  "productType": "STANDARD",
+  "quantity": 10
+}
+```
+
+Success is HTTP `200 OK`:
+
+```
+{
+  "productId": "P1001",
+  "productName": "Example Product",
+  "productType": "STANDARD",
+  "availableQuantity": 10,
+  "version": 1
+}
+```
+
+Missing or invalid fields, non-positive quantity, and duplicate products return HTTP `400 Bad Request`.
+Missing or invalid JWT returns `401 Unauthorized`; an authenticated CUSTOMER returns `403 Forbidden`.
+A successful creation persists one `InventoryUpdate` Outbox event with version `1`.
+
+## 10. Increase Inventory
 
 `POST /inventory/increase`
 
@@ -332,5 +367,34 @@ The values above are illustrative. The actual response must contain the resultin
 * Quantity and version are updated atomically.
 * A successful inventory change produces a versioned Outbox event.
 * A rejected request must not change inventory or create an event.
-* The event is published asynchronously to `InventoryUpdates`.
+* The event is published asynchronously to `InventoryUpdate`.
 * The response must not depend on Couchbase catching up with the committed change.
+
+## 11. Create Back-in-Stock Notification Request
+
+**Endpoint:** `POST /notifications/back-in-stock`
+
+**Authorization:** CUSTOMER
+
+### Request
+
+    {
+      "productId": "P1001"
+    }
+
+### Success Response
+
+**Status:** `201 Created`
+
+    {
+      "requestId": "NR1001",
+      "productId": "P1001",
+      "status": "ACTIVE"
+    }
+
+### Rules
+
+- `customerId` is derived from the JWT and is not accepted from the request body.
+- Reject invalid product identifiers.
+- Message users with 400 status if quantity is not 0 for product requested
+- Prevent duplicate active requests for the same customer and product.

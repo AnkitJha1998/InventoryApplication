@@ -211,13 +211,13 @@ The event contains:
 
 The event's version must match the version committed with the corresponding inventory update.
 
-The Outbox Publisher publishes the persisted event to `InventoryUpdates`. Retries must preserve the event ID and version.
+The Outbox Publisher publishes the persisted event to `InventoryUpdate`. Retries must preserve the event ID and version.
 
 The Outbox event must not be published if its inventory transaction rolls back.
 
 ## Couchbase Version-Aware Updates
 
-* The Inventory query consumer reads `InventoryUpdate` events from `InventoryUpdates`.
+* The Inventory query consumer reads `InventoryUpdate` events from `InventoryUpdate`.
 * Couchbase stores the inventory quantity and the last applied version.
 * An event may update a document only if its version is greater than the document's current version.
 * Version comparison and document mutation must be atomic.
@@ -240,6 +240,6 @@ The Outbox event must not be published if its inventory transaction rolls back.
 * Prevent duplicate inventory records for the same product.
 * Initialize the inventory version using the Flow 3.5 versioning convention.
 * Persist the inventory record and initial `InventoryUpdate` Outbox event in one PostgreSQL transaction.
-* Publish through the existing `InventoryUpdates` pipeline.
+* Publish through the existing `InventoryUpdate` pipeline.
 * Reuse the existing version-aware Couchbase consumer.
 

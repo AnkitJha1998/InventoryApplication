@@ -1,8 +1,8 @@
-\# Flow 3.5.1 - Inventory Creation
+# Flow 3.5.1 - Inventory Creation
 
 
 
-\## Purpose
+## Purpose
 
 
 
@@ -10,13 +10,13 @@ Add inventory creation and ensure the initial inventory state is synchronized to
 
 
 
-\## Flow
+## Flow
 
 
 
 ```
 
-STORE\_MANAGER
+STORE_MANAGER
 
 &#x20;    |
 
@@ -50,7 +50,7 @@ Outbox Publisher
 
 &#x20;    v
 
-Kafka: InventoryUpdates
+Kafka: InventoryUpdate
 
 &#x20;    |
 
@@ -68,39 +68,39 @@ Couchbase
 
 
 
-\## Rules
+## Rules
 
 
 
-\* Only `STORE\_MANAGER` can create inventory.
+* Only `STORE_MANAGER` can create inventory.
 
-\* Prevent duplicate inventory records for the same product.
+* Prevent duplicate inventory records for the same product.
 
-\* Initialize the inventory version consistently with Flow 3.5.
+* Initialize the inventory version consistently with Flow 3.5.
 
-\* Persist the inventory record and Outbox event in the same transaction.
+* Persist the inventory record and Outbox event in the same transaction.
 
-\* Include the initial quantity and version in the `InventoryUpdate` event.
+* Include the initial quantity and version in the `InventoryUpdate` event.
 
-\* Reuse the existing Outbox Publisher and Couchbase consumer.
+* Reuse the existing Outbox Publisher and Couchbase consumer.
 
-\* Do not introduce notification processing in this flow.
-
-
-
-\## Verification
+* Do not introduce notification processing in this flow.
 
 
 
-\* Inventory creation succeeds for `STORE\_MANAGER`.
+## Verification
 
-\* Unauthorized requests are rejected.
 
-\* Duplicate creation is prevented.
 
-\* The initial version is persisted and included in the Outbox event.
+* Inventory creation succeeds for `STORE_MANAGER`.
 
-\* Couchbase receives the initial inventory state through `InventoryUpdates`.
+* Unauthorized requests are rejected.
+
+* Duplicate creation is prevented.
+
+* The initial version is persisted and included in the Outbox event.
+
+* Couchbase receives the initial inventory state through `InventoryUpdate`.
 
 
 
