@@ -87,7 +87,24 @@ The Flow 3.5 implementation must add scenarios for:
 - Query results remain ordered by `updatedAt DESC` with a stable `productId` tie-breaker.
 - Concurrent inventory changes produce correctly ordered versions.
 
-NotificationTriggers remains out of scope for Flow 3.5 and is reserved for Flow 4.
+NotificationTrigger remains out of scope for Flow 3.5 and is reserved for Flow 4.
+
+## Flow 4: Back-in-stock notifications
+
+Required scenarios:
+
+- A CUSTOMER can submit `POST /notifications/back-in-stock` with only `productId`; the customer ID is always derived from the validated JWT.
+- Missing, malformed, invalid, or expired JWTs return `401`, while a STORE_MANAGER receives `403`.
+- The request forwards the exact Authorization header to `GET /inventory/{productId}`.
+- Missing products and positive stock return `400`; downstream query failures return `500`.
+- A zero-quantity product creates one persisted ACTIVE request and returns `201` with its request ID.
+- A duplicate active request for the same customer and product returns `400`; customer identity is isolated between JWTs.
+- A zero-to-positive inventory transition emits exactly one `NotificationTrigger` event; creation and positive-to-positive changes emit none.
+- The trigger contains event ID, product ID, product name, available quantity, version, and event timestamp on the exact `NotificationTrigger` topic.
+- A trigger with no active requests is idle and acknowledged without creating a notification.
+- A trigger completes every active request for the product and prepares one notification per request with exact message `<Item Name> is now available`.
+- Duplicate event IDs are idempotent and do not create duplicate notifications.
+- Notification request, notification, and processed-event writes commit atomically; a database failure leaves the Kafka message unacknowledged for redelivery.
 
 ## Test data and cleanup
 

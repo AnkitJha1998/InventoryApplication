@@ -7,8 +7,9 @@ Java 21 / Spring Boot implementation of the synchronous order-to-inventory reduc
 * `order-service` (port 8080): exposes `POST /orders` and delegates synchronously to inventory.
 * `inventory-service` (port 8081): exposes inventory command/query APIs, owns PostgreSQL state, Couchbase read model, Kafka consumer, and transactional outbox worker.
 * `user-service` (port 8082): exposes user registration/login and issues JWTs.
+* `notification-service` (port 8083): accepts customer back-in-stock requests and prepares notifications from `NotificationTrigger` events.
 
-The inventory operation is atomic: stock is conditionally decremented, the `(orderId, productId)` operation is recorded, and an `InventoryUpdate` outbox event is committed in the same PostgreSQL transaction. A `NotificationTriggers` event is added only for a `previous_count = 0` to `current_count > 0` transition. Retries with the same quantity are no-ops; a different quantity for the same key is a 400 conflict. Outbox delivery is asynchronous and does not roll back a successful reduction. The worker uses `PROCESSING` leases, `FOR UPDATE SKIP LOCKED`, and one initial attempt plus four retries; expired leases are reclaimed and exhausted leases become `FAILED`.
+The inventory operation is atomic: stock is conditionally decremented, the `(orderId, productId)` operation is recorded, and an `InventoryUpdate` outbox event is committed in the same PostgreSQL transaction. A `NotificationTrigger` event is added only for a `previous_count = 0` to `current_count > 0` transition. Retries with the same quantity are no-ops; a different quantity for the same key is a 400 conflict. Outbox delivery is asynchronous and does not roll back a successful reduction. The worker uses `PROCESSING` leases, `FOR UPDATE SKIP LOCKED`, and one initial attempt plus four retries; expired leases are reclaimed and exhausted leases become `FAILED`.
 
 ## Run locally
 
@@ -27,9 +28,13 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 cd user-service
 mvn clean verify
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
+# in another terminal, from the repository root
+cd notification-service
+mvn clean verify
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Local development defaults are PostgreSQL `localhost:5432`, database `inventory`, user/password `postgres/postgres`, Kafka `localhost:9092`, Couchbase `couchbase://localhost` (`Administrator`/`password`), and Inventory Service `http://localhost:8081`. Run each project with the `dev` profile. Production/Azure values are configured through the environment variables used by each service's `application.yaml`.
+Local development defaults are PostgreSQL `localhost:5432`, database `inventory`, user/password `postgres/postgres`, Kafka `localhost:9092`, Couchbase `couchbase://localhost` (`Administrator`/`password`), Inventory Service `http://localhost:8081`, and Notification Service `http://localhost:8083`. Run each project with the `dev` profile. Production/Azure values are configured through the environment variables used by each service's `application.yaml`.
 
 ## API
 
@@ -41,6 +46,10 @@ Content-Type: application/json
 ```
 
 The order response is the inventory reduction response (`200`): `orderId`, `productId`, `quantity`, `previousCount`, `currentCount`, and `alreadyProcessed`. Inventory can be called directly at `POST http://localhost:8081/inventory/reduce` with the same body. Invalid quantity, missing product, insufficient stock, and idempotency conflicts return `400`; malformed/unmapped URLs return framework `404`; unexpected failures return `500`.
+
+## Flow 4 back-in-stock notifications
+
+Customers submit `POST http://localhost:8083/notifications/back-in-stock` with the original JWT and `{"productId":"P1001"}`. The service derives `customerId` from the JWT, calls the inventory query with the same Authorization header, and creates an `ACTIVE` request only while quantity is zero. A zero-to-positive increase emits `NotificationTrigger`; the consumer prepares entries with the exact message `<Item Name> is now available` and completes matching requests. Kafka uses the exact `InventoryUpdate` and `NotificationTrigger` topic names.
 
 ## Manual seed and SQL checks
 

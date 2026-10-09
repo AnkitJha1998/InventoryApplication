@@ -23,7 +23,7 @@ CREATE TABLE outbox_events (
   product_id VARCHAR(255) NOT NULL REFERENCES inventory(product_id),
   previous_count INTEGER NOT NULL CHECK (previous_count >= 0),
   current_count INTEGER NOT NULL CHECK (current_count >= 0),
-  topic VARCHAR(64) NOT NULL CHECK (topic IN ('InventoryUpdate', 'NotificationTriggers')),
+  topic VARCHAR(64) NOT NULL CHECK (topic IN ('InventoryUpdate', 'NotificationTrigger')),
   status VARCHAR(16) NOT NULL CHECK (status IN ('PENDING','PROCESSING','PUBLISHED','FAILED')),
   retry_count INTEGER NOT NULL DEFAULT 0 CHECK (retry_count >= 0),
   lease_until TIMESTAMPTZ,

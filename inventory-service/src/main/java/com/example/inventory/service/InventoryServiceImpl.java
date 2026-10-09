@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class InventoryServiceImpl implements InventoryService {
     private static final String INVENTORY_UPDATE_TOPIC = "InventoryUpdate";
+    private static final String NOTIFICATION_TRIGGER_TOPIC = "NotificationTrigger";
 
     private final InventoryRepository inventoryRepository;
     private final InventoryOperationRepository operationRepository;
@@ -118,12 +119,12 @@ public class InventoryServiceImpl implements InventoryService {
         Inventory inventory = inventoryRepository.findById(request.productId())
                 .orElseThrow(() -> new InventoryNotFoundException(request.productId()));
         long version = resultingVersion(inventory);
-        saveOutbox(
-                inventory,
-                inventory.getAvailableCount() - request.quantity(),
-                inventory.getAvailableCount(),
-                version,
-                Instant.now());
+        int previous = inventory.getAvailableCount() - request.quantity();
+        Instant occurredAt = Instant.now();
+        saveOutbox(inventory, previous, inventory.getAvailableCount(), version, occurredAt);
+        if (previous == 0 && inventory.getAvailableCount() > 0) {
+            saveNotificationTriggerOutbox(inventory, inventory.getAvailableCount(), version, occurredAt);
+        }
         return new IncreaseResponse(inventory.getProductId(), inventory.getAvailableCount(), version);
     }
 
@@ -149,21 +150,40 @@ public class InventoryServiceImpl implements InventoryService {
             int current,
             long version,
             Instant occurredAt) {
-        outboxRepository.save(
-                OutboxEvent.builder()
-                        .eventId(UUID.randomUUID())
-                        .productId(inventory.getProductId())
-                        .productName(inventory.getProductName())
-                        .productType(inventory.getProductType())
-                        .previousCount(previous)
-                        .currentCount(current)
-                        .version(version)
-                        .occurredAt(occurredAt)
-                        .topic(INVENTORY_UPDATE_TOPIC)
-                        .status(OutboxStatus.PENDING)
-                        .retryCount(0)
-                        .createdAt(occurredAt)
-                        .build());
+        outboxRepository.save(buildOutboxEvent(
+                inventory, previous, current, version, occurredAt, INVENTORY_UPDATE_TOPIC));
+    }
+
+    private void saveNotificationTriggerOutbox(
+            Inventory inventory,
+            int current,
+            long version,
+            Instant occurredAt) {
+        outboxRepository.save(buildOutboxEvent(
+                inventory, 0, current, version, occurredAt, NOTIFICATION_TRIGGER_TOPIC));
+    }
+
+    private OutboxEvent buildOutboxEvent(
+            Inventory inventory,
+            int previous,
+            int current,
+            long version,
+            Instant occurredAt,
+            String topic) {
+        return OutboxEvent.builder()
+                .eventId(UUID.randomUUID())
+                .productId(inventory.getProductId())
+                .productName(inventory.getProductName())
+                .productType(inventory.getProductType())
+                .previousCount(previous)
+                .currentCount(current)
+                .version(version)
+                .occurredAt(occurredAt)
+                .topic(topic)
+                .status(OutboxStatus.PENDING)
+                .retryCount(0)
+                .createdAt(occurredAt)
+                .build();
     }
 
     private void validateCreation(CreateRequest request) throws BusinessException {

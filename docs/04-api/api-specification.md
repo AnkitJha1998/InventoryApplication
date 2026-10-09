@@ -398,3 +398,136 @@ The values above are illustrative. The actual response must contain the resultin
 - Reject invalid product identifiers.
 - Message users with 400 status if quantity is not 0 for product requested
 - Prevent duplicate active requests for the same customer and product.
+
+## 12. Create Back-in-Stock Notification Request
+
+**Endpoint:** POST /notifications/back-in-stock
+
+**Authorization:** CUSTOMER
+
+### Request
+
+    {
+      "productId": "P1001"
+    }
+
+### Success Response
+
+**Status:** 201 Created
+
+    {
+      "requestId": "NR1001",
+      "productId": "P1001",
+      "status": "ACTIVE"
+    }
+
+### Rules
+
+- Derive customerId from the validated JWT.
+- Prevent duplicate ACTIVE requests for the same customer and product.
+- Do not modify inventory when creating a request.
+
+## 13. Get Unread Notification Count
+
+**Endpoint:** GET /notifications/count
+
+**Authorization:** CUSTOMER
+
+### Success Response
+
+**Status:** 200 OK
+
+    {
+      "unreadCount": 3
+    }
+
+### Rules
+
+- Return the unread notification count for the authenticated customer.
+- Return zero when no unread notifications exist.
+- Do not include notifications belonging to other customers.
+
+## 14. Get Paginated Notifications
+
+**Endpoint:** GET /notifications?page=0&size=20
+
+**Authorization:** CUSTOMER
+
+### Query Parameters
+
+| Parameter | Default | Constraint |
+|---|---|---|
+| page | 0 | Zero-based, non-negative |
+| size | 20 | 1–100 |
+
+### Success Response
+
+**Status:** 200 OK
+
+    {
+      "content": [
+        {
+          "notificationId": "N1001",
+          "productId": "P1001",
+          "message": "Your requested product is back in stock.",
+          "read": false,
+          "createdAt": "2026-10-09T10:30:00Z"
+        }
+      ],
+      "page": 0,
+      "size": 20,
+      "totalElements": 1,
+      "totalPages": 1
+    }
+
+### Rules
+
+- Return only notifications belonging to the authenticated customer.
+- Sort by createdAt descending.
+- Return an empty content array when no notifications match.
+- Return totalElements and totalPages for pagination.
+
+## 15. Mark One Notification as Read
+
+**Endpoint:** PATCH /notifications/{notificationId}/read
+
+**Authorization:** CUSTOMER
+
+### Success Response
+
+**Status:** 200 OK
+
+### Rules
+
+- Mark the specified notification as read if it belongs to the authenticated customer.
+- Repeated requests must be safe.
+- Do not expose or modify another customer's notification.
+
+## 16. Mark Multiple Notifications as Read
+
+**Endpoint:** PATCH /notifications/read
+
+**Authorization:** CUSTOMER
+
+### Request
+
+    {
+      "notificationIds": ["N1001", "N1002", "N1003"]
+    }
+
+### Success Response
+
+**Status:** 200 OK
+
+    {
+      "updatedCount": 2
+    }
+
+### Rules
+
+- Accept a non-empty list of notification IDs.
+- Mark matching unread notifications belonging to the authenticated customer as read.
+- updatedCount is the number changed from unread to read.
+- Already-read notifications do not increase updatedCount.
+- Do not modify notifications belonging to other customers.
+- Repeated requests must be safe.

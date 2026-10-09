@@ -1,0 +1,35 @@
+server:
+    port: ${SERVER_PORT:8083}
+spring:
+    config:
+        activate:
+            on-profile: dev
+    application:
+        name: notification-service
+    datasource:
+        url: jdbc:postgresql://localhost:5432/inventory
+        username: postgres
+        password: postgres
+    flyway:
+        enabled: true
+    jpa:
+        open-in-view: false
+    kafka:
+        bootstrap-servers: localhost:9092
+        consumer:
+            enable-auto-commit: false
+            group-id: notification-consumer
+            auto-offset-reset: earliest
+            key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+            value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+        listener:
+            ack-mode: manual
+            missing-topics-fatal: false
+jwt:
+    secret: dev-flow2-signing-secret-change-me
+inventory:
+    query:
+        base-url: http://localhost:8081
+notification:
+    consumer:
+        group: notification-consumer

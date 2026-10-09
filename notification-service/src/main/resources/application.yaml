@@ -1,0 +1,32 @@
+server:
+    port: ${SERVER_PORT:8083}
+spring:
+    application:
+        name: notification-service
+    datasource:
+        url: ${AZURE_POSTGRES_URL}
+        username: ${AZURE_DB_USERNAME}
+        password: ${AZURE_DB_PASSWORD}
+    flyway:
+        enabled: true
+    jpa:
+        open-in-view: false
+    kafka:
+        bootstrap-servers: ${AZURE_KAFKA_BOOTSTRAP_SERVERS}
+        consumer:
+            enable-auto-commit: false
+            group-id: ${NOTIFICATION_CONSUMER_GROUP:notification-consumer}
+            auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET:latest}
+            key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+            value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+        listener:
+            ack-mode: manual
+            missing-topics-fatal: false
+jwt:
+    secret: ${JWT_SECRET}
+inventory:
+    query:
+        base-url: ${INVENTORY_QUERY_BASE_URL:http://localhost:8081}
+notification:
+    consumer:
+        group: ${NOTIFICATION_CONSUMER_GROUP:notification-consumer}

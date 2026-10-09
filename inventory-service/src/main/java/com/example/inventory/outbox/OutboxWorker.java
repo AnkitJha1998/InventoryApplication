@@ -133,6 +133,7 @@ public class OutboxWorker {
 
     private String payload(Event event) {
         try {
+            Instant timestamp = event.occurredAt() == null ? Instant.now() : event.occurredAt();
             return mapper.writeValueAsString(
                     new Payload(
                             event.eventId(),
@@ -142,7 +143,7 @@ public class OutboxWorker {
                             event.previous(),
                             event.current(),
                             event.version(),
-                            event.occurredAt() == null ? Instant.now() : event.occurredAt(),
+                            timestamp,
                             event.topic()));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException(e);
