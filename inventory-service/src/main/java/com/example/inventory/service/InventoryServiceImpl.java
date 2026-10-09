@@ -8,10 +8,13 @@ import com.example.inventory.persistence.InventoryOperationRepository;
 import com.example.inventory.persistence.InventoryRepository;
 import com.example.inventory.persistence.OutboxEvent;
 import com.example.inventory.persistence.OutboxEventRepository;
+import com.example.inventory.persistence.OutboxStatus;
+
+import java.time.Instant;
+import java.util.UUID;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
 
 @Service
 public class InventoryServiceImpl implements InventoryService {
@@ -19,9 +22,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final InventoryOperationRepository operationRepository;
     private final OutboxEventRepository outboxRepository;
 
-    public InventoryServiceImpl(InventoryRepository inventoryRepository,
-                                InventoryOperationRepository operationRepository,
-                                OutboxEventRepository outboxRepository) {
+    public InventoryServiceImpl(InventoryRepository inventoryRepository, InventoryOperationRepository operationRepository, OutboxEventRepository outboxRepository) {
         this.inventoryRepository = inventoryRepository;
         this.operationRepository = operationRepository;
         this.outboxRepository = outboxRepository;
@@ -47,31 +48,46 @@ public class InventoryServiceImpl implements InventoryService {
             throw new BusinessException(exists ? "insufficient stock" : "inventory item not found");
         }
 
-        Inventory inventory = inventoryRepository.findById(request.productId())
-                .orElseThrow(() -> new BusinessException("inventory item not found"));
+        Inventory inventory = inventoryRepository.findById(request.productId()).orElseThrow(() -> new BusinessException("inventory item not found"));
         int current = inventory.getAvailableCount();
         int previous = current + request.quantity();
 
-        operationRepository.save(new InventoryOperation(UUID.randomUUID(), request.orderId(), request.productId(),
-                request.quantity(), previous, current));
+        operationRepository.save(
+                InventoryOperation.builder()
+                        .operationId(UUID.randomUUID())
+                        .orderId(request.orderId())
+                        .productId(request.productId())
+                        .quantity(request.quantity())
+                        .previousCount(previous)
+                        .currentCount(current)
+                        .createdAt(Instant.now())
+                        .build());
         saveOutbox(request.productId(), previous, current, "InventoryUpdate");
         if (previous == 0 && current > 0) {
             saveOutbox(request.productId(), previous, current, "NotificationTriggers");
         }
-        return new ReductionResponse(request.orderId(), request.productId(), request.quantity(), previous, current,
-                false);
+        return new ReductionResponse(request.orderId(), request.productId(), request.quantity(), previous, current, false);
     }
 
     private ReductionResponse existingResponse(ReductionRequest request, InventoryOperation existing) {
         if (existing.getQuantity() != request.quantity()) {
             throw new BusinessException("idempotency conflict: quantity differs for orderId/productId");
         }
-        return new ReductionResponse(request.orderId(), request.productId(), existing.getQuantity(),
-                existing.getPreviousCount(), existing.getCurrentCount(), true);
+        return new ReductionResponse(request.orderId(), request.productId(), existing.getQuantity(), existing.getPreviousCount(), existing.getCurrentCount(), true);
     }
 
     private void saveOutbox(String productId, int previous, int current, String topic) {
-        outboxRepository.save(new OutboxEvent(UUID.randomUUID(), productId, previous, current, topic));
+        outboxRepository.save(
+                OutboxEvent.builder()
+                        .eventId(UUID.randomUUID())
+                        .productId(productId)
+                        .previousCount(previous)
+                        .currentCount(current)
+                        .topic(topic)
+                        .status(OutboxStatus.PENDING)
+                        .retryCount(0)
+                        .createdAt(Instant.now())
+                        .build());
     }
 
     private void validate(ReductionRequest request) {

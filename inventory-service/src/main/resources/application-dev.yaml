@@ -8,3 +8,6 @@ spring:
     password: postgres
   kafka:
     bootstrap-servers: localhost:9092
+jwt:
+  secret: dev-flow2-signing-secret-change-me
+  expiration-seconds: 3600

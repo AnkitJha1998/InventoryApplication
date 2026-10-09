@@ -132,7 +132,7 @@ Failure:
 - `400 Bad Request` — invalid request.
 - `401 Unauthorized` — missing or invalid JWT.
 - `403 Forbidden` — authenticated user is not a Customer.
-- `409 Conflict` — inventory reduction failed.
+- `400 Bad Request` — inventory reduction failed.
 
 ---
 
@@ -172,7 +172,7 @@ Failure:
 
 - `400 Bad Request` — invalid quantity or request.
 - `401 Unauthorized` — missing or invalid JWT.
-- `409 Conflict` — insufficient inventory or idempotency conflict.
+- `400 Bad Request` — insufficient inventory or idempotency conflict.
 
 If the same `orderId + productId + quantity` is received again, the previously recorded result should be returned without reducing inventory again.
 
@@ -182,12 +182,14 @@ If the same `orderId + productId` is received with a different quantity, the req
 
 ## 6. JWT Requirements
 
-The JWT must contain:
+The JWT must contain exactly these claims:
 
-- User identity.
-- User role.
-- Issued-at time.
-- Expiry time.
+- `userId` — the server-generated user UUID.
+- `role` — `CUSTOMER` or `STORE_MANAGER`.
+- `iat` — issued-at time as a Unix timestamp.
+- `exp` — expiry time as a Unix timestamp (3600 seconds after issuance).
+
+Tokens use an HMAC-SHA256 signature. The signing secret is externalized (`JWT_SECRET` in production and the development profile secret locally). Protected endpoints reject missing, malformed, incorrectly signed, or expired tokens with `401 Unauthorized`; a valid token with an insufficient role receives `403 Forbidden`. The Order Service forwards the incoming `Authorization` header unchanged to the Inventory Service.
 
 The JWT must be digitally signed.
 
@@ -198,3 +200,79 @@ Protected services must validate:
 - Required claims.
 
 The signing secret or signing key must be supplied through configuration and must not be hardcoded in source code.
+
+
+## 7. Inventory Query APIs
+
+### Get Product Inventory
+
+`GET /inventory/{productId}`
+
+Authentication: JWT
+
+Authorization: `CUSTOMER` or `STORE_MANAGER`
+
+Returns the inventory query model for the requested product from Couchbase.
+
+Success:
+
+HTTP `200 OK`
+
+    {
+      "productId": "P1001",
+      "productName": "Example Product",
+      "availableQuantity": 15,
+      "available": true,
+      "version": 3
+    }
+
+Failure:
+
+- `401 Unauthorized` — missing or invalid JWT.
+- `403 Forbidden` — authenticated user does not have an allowed role.
+- `404 Not Found` — product is not present in the query model.
+
+### 8. Browse Product Catalogue
+
+`GET /inventory?page=0&size=20`
+
+Authentication: JWT
+
+Authorization: `CUSTOMER` or `STORE_MANAGER`
+
+Returns a paginated list of products from Couchbase.
+
+Success:
+
+HTTP `200 OK`
+
+    {
+      "content": [
+        {
+          "productId": "P1001",
+          "productName": "Example Product",
+          "availableQuantity": 15,
+          "available": true,
+          "version": 3
+        }
+      ],
+      "page": 0,
+      "size": 20,
+      "totalElements": 1,
+      "totalPages": 1
+    }
+
+Failure:
+
+- `400 Bad Request` — invalid pagination parameters.
+- `401 Unauthorized` — missing or invalid JWT.
+- `403 Forbidden` — authenticated user does not have an allowed role.
+
+### Query API Rules
+
+- Both APIs read from Couchbase and must not query PostgreSQL directly.
+- `page` is zero-based and defaults to `0`.
+- `size` defaults to `20` and must be greater than zero.
+- The service must enforce a maximum page size of `100`.
+- `available` is derived from `availableQuantity > 0`.
+- Query results may temporarily lag behind the PostgreSQL source of truth because the read model is updated asynchronously.

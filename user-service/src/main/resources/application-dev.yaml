@@ -1,0 +1,11 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:postgresql://localhost:5432/inventory
+    username: postgres
+    password: postgres
+jwt:
+  secret: dev-flow2-signing-secret-change-me
+  expiration-seconds: 3600

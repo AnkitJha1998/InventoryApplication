@@ -4,4 +4,7 @@ spring:
   application:
     name: order-service
 inventory-service:
-  base-url: ${AZURE_INVENTORY_SERVICE_URL}
+  base-url: ${AZURE_INVENTORY_SERVICE_URL:http://localhost:8081}
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-seconds: 3600
