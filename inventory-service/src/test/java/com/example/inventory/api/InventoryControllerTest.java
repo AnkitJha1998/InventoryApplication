@@ -2,9 +2,11 @@ package com.example.inventory.api;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.inventory.service.InventoryQueryService;
 import com.example.inventory.service.InventoryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class InventoryControllerTest {
   @Autowired MockMvc mvc;
   @MockBean InventoryService service;
+  @MockBean InventoryQueryService queryService;
 
   @Test
   void reducesWithValidRequest() throws Exception {
@@ -27,6 +30,14 @@ class InventoryControllerTest {
             post("/inventory/reduce")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":\"o\",\"productId\":\"p\",\"quantity\":2}"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void queriesPagedCatalogue() throws Exception {
+    when(queryService.findAll(0, 20))
+        .thenReturn(new InventoryPageResponse(java.util.List.of(), 0, 20, 0, 0));
+    mvc.perform(get("/inventory"))
         .andExpect(status().isOk());
   }
 

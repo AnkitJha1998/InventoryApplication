@@ -2,8 +2,8 @@ package com.example.user.service;
 
 import com.example.user.api.UserRequests;
 import com.example.user.api.UserResponses;
-import com.example.user.persistence.User;
-import com.example.user.persistence.UserRepository;
+import com.example.user.persistence.entity.User;
+import com.example.user.persistence.repository.UserRepository;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
@@ -23,8 +23,13 @@ public class UserServiceImpl implements UserService {
   }
 
   @Override
-  @Transactional
-  public UserResponses.Registration register(UserRequests.Registration request) {
+  @Transactional(
+      rollbackFor = {
+        UserExceptions.InvalidRoleException.class,
+        UserExceptions.DuplicateUsernameException.class
+      })
+  public UserResponses.Registration register(UserRequests.Registration request)
+      throws UserExceptions.InvalidRoleException, UserExceptions.DuplicateUsernameException {
     String role = request.role().trim().toUpperCase(Locale.ROOT);
     if (!role.equals("CUSTOMER") && !role.equals("STORE_MANAGER")) {
       throw new UserExceptions.InvalidRoleException();

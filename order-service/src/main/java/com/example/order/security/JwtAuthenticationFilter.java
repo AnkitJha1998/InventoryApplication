@@ -32,7 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 null,
                 List.of(new SimpleGrantedAuthority("ROLE_" + claims.role())));
         SecurityContextHolder.getContext().setAuthentication(authentication);
-      } catch (IllegalArgumentException ignored) {
+      } catch (JwtValidationException ignored) {
         // Leave the context anonymous; the security chain returns 401 for protected routes.
       }
     }

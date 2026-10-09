@@ -73,6 +73,15 @@ User.builder()
 - Do not apply Lombok constructor annotations outside entities.
 - Keep service interfaces separate from `*Impl` classes.
 
+## Exception policy
+
+- Custom application exceptions must extend `Exception`, not `RuntimeException`.
+- Service and controller method signatures must explicitly declare checked application exceptions they can throw.
+- `ControllerAdvice` remains responsible for mapping checked application exceptions to HTTP responses.
+- Any checked exception thrown from a `@Transactional` method must be included in the transaction rollback configuration, for example `@Transactional(rollbackFor = ApplicationException.class)`.
+- Do not hide checked application exceptions by wrapping them in generic runtime exceptions.
+- Background workers and Kafka consumers must handle checked application exceptions locally because no HTTP `ControllerAdvice` request is active.
+
 ## Verification
 
 Before considering formatting complete:

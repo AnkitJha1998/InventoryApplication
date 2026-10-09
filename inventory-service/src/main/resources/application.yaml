@@ -15,9 +15,29 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all
+    consumer:
+      enable-auto-commit: false
+      group-id: ${INVENTORY_QUERY_CONSUMER_GROUP:inventory-query-read-model}
+      auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET:latest}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: manual
+  couchbase:
+    connection-string: ${COUCHBASE_CONNECTION_STRING}
+    username: ${COUCHBASE_USERNAME}
+    password: ${COUCHBASE_PASSWORD}
+  data:
+    couchbase:
+      bucket-name: ${COUCHBASE_BUCKET:inventory}
+      scope-name: ${COUCHBASE_SCOPE:Inventory}
+      collection-name: ${COUCHBASE_COLLECTION:InventoryList}
 jwt:
   secret: ${JWT_SECRET}
   expiration-seconds: 3600
+inventory:
+  query:
+    consumer-group: ${INVENTORY_QUERY_CONSUMER_GROUP:inventory-query-read-model}
 outbox:
   poll-ms: ${OUTBOX_POLL_MS:1000}
   batch-size: ${OUTBOX_BATCH_SIZE:20}

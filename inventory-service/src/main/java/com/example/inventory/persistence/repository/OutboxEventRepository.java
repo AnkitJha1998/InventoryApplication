@@ -1,5 +1,6 @@
-package com.example.inventory.persistence;
+package com.example.inventory.persistence.repository;
 
+import com.example.inventory.persistence.entity.OutboxEvent;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -21,9 +22,9 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
 
   @Modifying
   @Query(
-      "UPDATE OutboxEvent e SET e.status = com.example.inventory.persistence.OutboxStatus.FAILED, "
+      "UPDATE OutboxEvent e SET e.status = com.example.inventory.persistence.entity.OutboxStatus.FAILED, "
           + "e.leaseUntil = null, e.lastError = COALESCE(e.lastError, :message) "
-          + "WHERE e.status = com.example.inventory.persistence.OutboxStatus.PROCESSING "
+          + "WHERE e.status = com.example.inventory.persistence.entity.OutboxStatus.PROCESSING "
           + "AND e.leaseUntil < :now AND e.retryCount >= :maxRetries")
   int recoverExhaustedLeases(
       @Param("now") Instant now,

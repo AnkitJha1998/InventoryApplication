@@ -90,3 +90,44 @@ Back-in-stock notifications are processed asynchronously and may be delayed when
 - Consumers must be idempotent.
 - A restock notification is triggered only when stock changes from zero to positive.
 - Services must not directly access another service's database.
+
+
+## 8. Versioned Inventory Events
+
+### Source of Truth
+
+PostgreSQL owns the authoritative inventory quantity and inventory version.
+
+Each successful inventory change that generates an inventory update event must increment the product's version atomically with the quantity update.
+
+### Transactional Outbox
+
+The inventory transaction must persist:
+
+* The updated inventory quantity and version.
+* Any applicable inventory operation record.
+* The corresponding Outbox event.
+
+These changes must commit or roll back together.
+
+The persisted Outbox event must include the inventory version. If the Outbox schema stores a separate version column in addition to the serialized event payload, both representations must contain the same version and be written in the same transaction.
+
+The Outbox Publisher publishes the persisted event; it does not generate versions.
+
+### InventoryUpdates
+
+The `InventoryUpdates` topic carries versioned inventory changes to the Inventory query consumer.
+
+The event includes the event ID, product ID, resulting available quantity, version, and event timestamp.
+
+### Couchbase Read Model
+
+The Inventory query consumer applies an event only when its version is newer than the version currently stored in Couchbase for that product.
+
+Version comparison and document update must be atomic. Duplicate, stale, and out-of-order events must not regress the query model.
+
+Kafka delivery is at least once, so the consumer must be idempotent.
+
+### Scope Boundary
+
+Flow 3.5 implements inventory addition and version-aware synchronization of inventory additions and reductions. Notification processing is specified separately in Flow 4.

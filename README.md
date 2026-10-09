@@ -5,7 +5,8 @@ Java 21 / Spring Boot implementation of the synchronous order-to-inventory reduc
 ## Modules
 
 * `order-service` (port 8080): exposes `POST /orders` and delegates synchronously to inventory.
-* `inventory-service` (port 8081): exposes `POST /inventory/reduce`, owns PostgreSQL state and the transactional outbox worker.
+* `inventory-service` (port 8081): exposes inventory command/query APIs, owns PostgreSQL state, Couchbase read model, Kafka consumer, and transactional outbox worker.
+* `user-service` (port 8082): exposes user registration/login and issues JWTs.
 
 The inventory operation is atomic: stock is conditionally decremented, the `(orderId, productId)` operation is recorded, and an `InventoryUpdate` outbox event is committed in the same PostgreSQL transaction. A `NotificationTriggers` event is added only for a `previous_count = 0` to `current_count > 0` transition. Retries with the same quantity are no-ops; a different quantity for the same key is a 400 conflict. Outbox delivery is asynchronous and does not roll back a successful reduction. The worker uses `PROCESSING` leases, `FOR UPDATE SKIP LOCKED`, and one initial attempt plus four retries; expired leases are reclaimed and exhausted leases become `FAILED`.
 
@@ -22,9 +23,13 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 cd order-service
 mvn clean verify
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
+# in another terminal, from the repository root
+cd user-service
+mvn clean verify
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Local development defaults are PostgreSQL `localhost:5432`, database `inventory`, user/password `postgres/postgres`, Kafka `localhost:9092`, and Inventory Service `http://localhost:8081`. Run each project with the `dev` profile. Production/Azure values are configured through the environment variables used by each service's `application.yaml`.
+Local development defaults are PostgreSQL `localhost:5432`, database `inventory`, user/password `postgres/postgres`, Kafka `localhost:9092`, Couchbase `couchbase://localhost` (`Administrator`/`password`), and Inventory Service `http://localhost:8081`. Run each project with the `dev` profile. Production/Azure values are configured through the environment variables used by each service's `application.yaml`.
 
 ## API
 
@@ -52,4 +57,12 @@ SELECT event_id, product_id, topic, status, retry_count, lease_until, published_
 FROM outbox_events ORDER BY created_at;
 ```
 
-To reset local state, stop Compose and remove its volume (`docker compose down -v`), then restart the services.
+For local Couchbase setup, open the Couchbase UI at `http://localhost:8091`, create the `inventory` bucket if it was not provisioned automatically, then create the `Inventory` scope and `InventoryList` collection. The Inventory Query read model uses `inventory.Inventory.InventoryList`; it does not use Couchbase's `_default` collection. Execute the following after the bucket exists:
+
+```sql
+CREATE SCOPE `inventory`.Inventory;
+CREATE COLLECTION `inventory`.Inventory.InventoryList;
+CREATE PRIMARY INDEX ON `inventory`.`Inventory`.`InventoryList`;
+```
+
+For production, replace the primary index with a targeted index appropriate for the catalogue query. To reset local state, stop Compose and remove its volumes (`docker compose down -v`), then restart the services.

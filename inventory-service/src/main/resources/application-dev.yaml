@@ -1,13 +1,47 @@
+server:
+  port: ${SERVER_PORT:8081}
 spring:
   config:
     activate:
       on-profile: dev
+  application:
+    name: inventory-service
   datasource:
     url: jdbc:postgresql://localhost:5432/inventory
     username: postgres
     password: postgres
+  flyway:
+    enabled: true
   kafka:
     bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+    consumer:
+      group-id: inventory-query-read-model
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: manual
+  couchbase:
+    connection-string: couchbase://localhost
+    username: Administrator
+    password: password
+  data:
+    couchbase:
+      bucket-name: inventory
+      scope-name: Inventory
+      collection-name: InventoryList
 jwt:
   secret: dev-flow2-signing-secret-change-me
   expiration-seconds: 3600
+inventory:
+  query:
+    consumer-group: inventory-query-read-model
+outbox:
+  poll-ms: ${OUTBOX_POLL_MS:1000}
+  batch-size: ${OUTBOX_BATCH_SIZE:20}
+  lease-seconds: ${OUTBOX_LEASE_SECONDS:60}

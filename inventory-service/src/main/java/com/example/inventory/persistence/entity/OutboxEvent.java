@@ -1,4 +1,4 @@
-package com.example.inventory.persistence;
+package com.example.inventory.persistence.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -26,6 +26,12 @@ public class OutboxEvent {
 
   @Column(name = "product_id", nullable = false)
   private String productId;
+
+  @Column(name = "product_name")
+  private String productName;
+
+  @Column(name = "product_type")
+  private String productType;
 
   @Column(name = "previous_count", nullable = false)
   private int previousCount;

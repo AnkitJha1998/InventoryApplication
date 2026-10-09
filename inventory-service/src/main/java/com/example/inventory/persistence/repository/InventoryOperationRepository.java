@@ -1,5 +1,6 @@
-package com.example.inventory.persistence;
+package com.example.inventory.persistence.repository;
 
+import com.example.inventory.persistence.entity.InventoryOperation;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;

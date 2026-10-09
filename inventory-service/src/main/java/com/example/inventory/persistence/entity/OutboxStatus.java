@@ -1,4 +1,4 @@
-package com.example.inventory.persistence;
+package com.example.inventory.persistence.entity;
 
 public enum OutboxStatus {
   PENDING,

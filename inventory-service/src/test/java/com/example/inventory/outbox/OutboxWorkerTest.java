@@ -5,9 +5,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.inventory.persistence.OutboxEvent;
-import com.example.inventory.persistence.OutboxEventRepository;
-import com.example.inventory.persistence.OutboxStatus;
+import com.example.inventory.persistence.entity.OutboxEvent;
+import com.example.inventory.persistence.repository.OutboxEventRepository;
+import com.example.inventory.persistence.entity.OutboxStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;

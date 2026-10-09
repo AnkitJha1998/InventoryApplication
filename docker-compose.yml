@@ -7,6 +7,21 @@ services:
       POSTGRES_PASSWORD: postgres
     ports: ["5432:5432"]
     volumes: ["inventory-postgres:/var/lib/postgresql/data"]
+  couchbase:
+    image: couchbase:community-7.6.2
+    ports:
+      - "8091:8091"
+      - "8092:8092"
+      - "8093:8093"
+      - "8094:8094"
+      - "11210:11210"
+    environment:
+      COUCHBASE_ADMINISTRATOR_USERNAME: Administrator
+      COUCHBASE_ADMINISTRATOR_PASSWORD: password
+      COUCHBASE_BUCKET: inventory
+      COUCHBASE_SCOPE: Inventory
+      COUCHBASE_COLLECTION: InventoryList
+
   kafka:
     image: bitnami/kafka:3.8
     ports: ["9092:9092"]

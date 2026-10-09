@@ -4,5 +4,6 @@ import com.example.user.api.UserRequests;
 import com.example.user.api.UserResponses;
 
 public interface UserService {
-  UserResponses.Registration register(UserRequests.Registration request);
+  UserResponses.Registration register(UserRequests.Registration request)
+      throws UserExceptions.InvalidRoleException, UserExceptions.DuplicateUsernameException;
 }

@@ -32,7 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     claims.userId().toString(),
                     null,
                     List.of(new SimpleGrantedAuthority("ROLE_" + claims.role()))));
-      } catch (IllegalArgumentException ignored) {
+      } catch (JwtValidationException ignored) {
         // Protected endpoints are rejected by authorization when no valid authentication is
         // present.
       }

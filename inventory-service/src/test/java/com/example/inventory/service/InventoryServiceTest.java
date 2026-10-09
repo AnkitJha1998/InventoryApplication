@@ -8,10 +8,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.example.inventory.api.ReductionRequest;
-import com.example.inventory.persistence.InventoryOperation;
-import com.example.inventory.persistence.InventoryOperationRepository;
-import com.example.inventory.persistence.InventoryRepository;
-import com.example.inventory.persistence.OutboxEventRepository;
+import com.example.inventory.persistence.entity.InventoryOperation;
+import com.example.inventory.persistence.repository.InventoryOperationRepository;
+import com.example.inventory.persistence.repository.InventoryRepository;
+import com.example.inventory.persistence.repository.OutboxEventRepository;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 
 class InventoryServiceTest {
   @Test
-  void sameOperationIsIdempotent() {
+  void sameOperationIsIdempotent() throws Exception {
     InventoryRepository inventory = mock(InventoryRepository.class);
     InventoryOperationRepository operations = mock(InventoryOperationRepository.class);
     when(operations.findByOrderIdAndProductId("o", "p"))
@@ -67,7 +67,7 @@ class InventoryServiceTest {
   }
 
   @Test
-  void reducesStockAndWritesOutboxEvents() {
+  void reducesStockAndWritesOutboxEvents() throws Exception {
     InventoryRepository inventory = mock(InventoryRepository.class);
     InventoryOperationRepository operations = mock(InventoryOperationRepository.class);
     OutboxEventRepository outbox = mock(OutboxEventRepository.class);
@@ -76,7 +76,7 @@ class InventoryServiceTest {
     when(inventory.findById("p"))
         .thenReturn(
             Optional.of(
-                com.example.inventory.persistence.Inventory.builder()
+                com.example.inventory.persistence.entity.Inventory.builder()
                     .productId("p")
                     .productName("Product")
                     .productType("STANDARD")

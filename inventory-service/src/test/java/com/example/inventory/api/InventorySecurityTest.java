@@ -2,11 +2,13 @@ package com.example.inventory.api;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.inventory.security.JwtService;
 import com.example.inventory.security.SecurityConfig;
+import com.example.inventory.service.InventoryQueryService;
 import com.example.inventory.service.InventoryService;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -22,7 +24,26 @@ import org.springframework.test.web.servlet.MockMvc;
 class InventorySecurityTest {
   @Autowired MockMvc mvc;
   @MockBean InventoryService service;
+  @MockBean InventoryQueryService queryService;
   @MockBean JwtService jwtService;
+
+  @Test
+  void authenticatedCustomerCanQueryInventory() throws Exception {
+    when(jwtService.validate("token"))
+        .thenReturn(new JwtService.Claims(UUID.randomUUID(), "CUSTOMER", 1, Long.MAX_VALUE));
+    when(queryService.findAll(0, 20))
+        .thenReturn(new InventoryPageResponse(java.util.List.of(), 0, 20, 0, 0));
+    mvc.perform(get("/inventory").header("Authorization", "Bearer token"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void authenticatedRoleWithoutQueryAccessIsForbidden() throws Exception {
+    when(jwtService.validate("token"))
+        .thenReturn(new JwtService.Claims(UUID.randomUUID(), "ADMIN", 1, Long.MAX_VALUE));
+    mvc.perform(get("/inventory").header("Authorization", "Bearer token"))
+        .andExpect(status().isForbidden());
+  }
 
   @Test
   void authenticatedStoreManagerCanReduceInventory() throws Exception {

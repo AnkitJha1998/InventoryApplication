@@ -24,7 +24,7 @@ public class JwtService {
     this.secret = secret.getBytes(StandardCharsets.UTF_8);
   }
 
-  public Claims validate(String token) {
+  public Claims validate(String token) throws JwtValidationException {
     try {
       String[] parts = token.split("\\.", -1);
       if (parts.length != 3
@@ -50,7 +50,7 @@ public class JwtService {
         throw new IllegalArgumentException("expired token");
       return new Claims(userId, role, iat, exp);
     } catch (Exception e) {
-      throw new IllegalArgumentException("invalid token", e);
+      throw new JwtValidationException("invalid token", e);
     }
   }
 

@@ -11,7 +11,7 @@ import org.springframework.web.client.RestClient;
 
 class OrderServiceTest {
   @Test
-  void delegatesReductionToInventoryEndpoint() {
+  void delegatesReductionToInventoryEndpoint() throws Exception {
     RestClient.Builder builder = RestClient.builder();
     MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
     server

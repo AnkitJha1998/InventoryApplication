@@ -1,11 +1,18 @@
+server:
+  port: ${SERVER_PORT:8082}
 spring:
   config:
     activate:
       on-profile: dev
+  application:
+    name: user-service
   datasource:
     url: jdbc:postgresql://localhost:5432/inventory
     username: postgres
     password: postgres
+  flyway:
+    enabled: true
+    table: user_service_flyway_schema_history
 jwt:
   secret: dev-flow2-signing-secret-change-me
   expiration-seconds: 3600

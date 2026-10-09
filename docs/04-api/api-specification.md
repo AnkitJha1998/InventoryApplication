@@ -221,9 +221,11 @@ HTTP `200 OK`
     {
       "productId": "P1001",
       "productName": "Example Product",
+      "productType": "STANDARD",
+      "availableCount": 15,
       "availableQuantity": 15,
       "available": true,
-      "version": 3
+      "updatedAt": "2025-01-01T00:00:00Z"
     }
 
 Failure:
@@ -251,9 +253,11 @@ HTTP `200 OK`
         {
           "productId": "P1001",
           "productName": "Example Product",
+          "productType": "STANDARD",
+          "availableCount": 15,
           "availableQuantity": 15,
           "available": true,
-          "version": 3
+          "updatedAt": "2025-01-01T00:00:00Z"
         }
       ],
       "page": 0,
@@ -274,5 +278,59 @@ Failure:
 - `page` is zero-based and defaults to `0`.
 - `size` defaults to `20` and must be greater than zero.
 - The service must enforce a maximum page size of `100`.
-- `available` is derived from `availableQuantity > 0`.
+- Catalogue results are ordered by `updatedAt` descending, using the event `occurredAt` timestamp.
+- Inventory update events do not carry a version in Flow 3; versioning is deferred to Flow 3.5.
 - Query results may temporarily lag behind the PostgreSQL source of truth because the read model is updated asynchronously.
+
+
+## 9. Increase Inventory
+
+`POST /inventory/increase`
+
+### Authentication
+
+JWT required.
+
+### Authorization
+
+`STORE_MANAGER` only.
+
+### Request
+
+```
+{
+  "productId": "P1001",
+  "quantity": 10
+}
+```
+
+### Success Response
+
+HTTP `200 OK`
+
+```
+{
+  "productId": "P1001",
+  "availableQuantity": 25,
+  "version": 4
+}
+```
+
+The values above are illustrative. The actual response must contain the resulting quantity and version from the committed inventory operation.
+
+### Error Responses
+
+* `400 Bad Request` — missing or invalid request fields, or quantity less than or equal to zero.
+* `401 Unauthorized` — missing or invalid JWT.
+* `403 Forbidden` — caller does not have the `STORE_MANAGER` role.
+* `404 Not Found` — product does not exist.
+
+### Rules
+
+* Inventory addition is performed by Inventory Service.
+* PostgreSQL is the source of truth.
+* Quantity and version are updated atomically.
+* A successful inventory change produces a versioned Outbox event.
+* A rejected request must not change inventory or create an event.
+* The event is published asynchronously to `InventoryUpdates`.
+* The response must not depend on Couchbase catching up with the committed change.

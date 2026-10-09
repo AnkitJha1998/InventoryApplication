@@ -1,6 +1,7 @@
 package com.example.inventory.security;
 
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -24,6 +25,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/inventory/reduce")
                     .authenticated()
+                    .requestMatchers(HttpMethod.GET, "/inventory", "/inventory/**")
+                    .hasAnyRole("CUSTOMER", "STORE_MANAGER")
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(

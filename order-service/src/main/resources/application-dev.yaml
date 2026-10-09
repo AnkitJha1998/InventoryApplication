@@ -1,7 +1,11 @@
+server:
+  port: ${SERVER_PORT:8080}
 spring:
   config:
     activate:
       on-profile: dev
+  application:
+    name: order-service
 inventory-service:
   base-url: http://localhost:8081
 jwt:

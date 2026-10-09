@@ -2,7 +2,7 @@ package com.example.user.service;
 
 import com.example.user.api.UserRequests;
 import com.example.user.api.UserResponses;
-import com.example.user.persistence.UserRepository;
+import com.example.user.persistence.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +20,8 @@ public class AuthServiceImpl implements AuthService {
   }
 
   @Override
-  public UserResponses.Login login(UserRequests.Login request) {
+  public UserResponses.Login login(UserRequests.Login request)
+      throws UserExceptions.InvalidCredentialsException {
     var user =
         repository
             .findByUsername(request.username())

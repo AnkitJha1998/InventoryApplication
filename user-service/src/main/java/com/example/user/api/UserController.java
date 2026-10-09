@@ -1,6 +1,7 @@
 package com.example.user.api;
 
 import com.example.user.service.AuthService;
+import com.example.user.service.UserExceptions;
 import com.example.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -18,12 +19,14 @@ public class UserController {
 
   @PostMapping("/users")
   public ResponseEntity<UserResponses.Registration> register(
-      @Valid @RequestBody UserRequests.Registration request) {
+      @Valid @RequestBody UserRequests.Registration request)
+      throws UserExceptions.InvalidRoleException, UserExceptions.DuplicateUsernameException {
     return ResponseEntity.status(201).body(userService.register(request));
   }
 
   @PostMapping("/auth/login")
-  public ResponseEntity<UserResponses.Login> login(@Valid @RequestBody UserRequests.Login request) {
+  public ResponseEntity<UserResponses.Login> login(@Valid @RequestBody UserRequests.Login request)
+      throws UserExceptions.InvalidCredentialsException {
     return ResponseEntity.ok(authService.login(request));
   }
 }

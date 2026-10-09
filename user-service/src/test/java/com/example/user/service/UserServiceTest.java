@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.example.user.api.UserRequests;
-import com.example.user.persistence.User;
-import com.example.user.persistence.UserRepository;
+import com.example.user.persistence.entity.User;
+import com.example.user.persistence.repository.UserRepository;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -13,7 +13,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 class UserServiceTest {
   @Test
-  void registrationGeneratesUuidAndStoresBcryptHash() {
+  void registrationGeneratesUuidAndStoresBcryptHash() throws Exception {
     UserRepository repository = mock(UserRepository.class);
     var encoder = new BCryptPasswordEncoder();
     when(repository.existsByUsername("alice")).thenReturn(false);
@@ -44,7 +44,7 @@ class UserServiceTest {
   }
 
   @Test
-  void loginIssuesBearerTokenForCorrectPassword() {
+  void loginIssuesBearerTokenForCorrectPassword() throws Exception {
     var repository = mock(UserRepository.class);
     var encoder = new BCryptPasswordEncoder();
     var id = java.util.UUID.randomUUID();
