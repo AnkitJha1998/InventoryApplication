@@ -29,7 +29,12 @@ public class InventoryQueryServiceImpl implements InventoryQueryService {
             throw new BusinessException("page must be non-negative and size must be between 1 and 100");
         }
         Page<InventoryResponse> result = repository
-                .findAll(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt")))
+                .findAll(PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(
+                                Sort.Order.desc("updatedAt"),
+                                Sort.Order.asc("productId"))))
                 .map(InventoryResponse::from);
         return new InventoryPageResponse(
                 result.getContent(),

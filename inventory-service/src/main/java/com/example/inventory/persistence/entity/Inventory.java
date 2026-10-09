@@ -17,19 +17,22 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class Inventory {
-  @Id
-  @Column(name = "product_id", nullable = false)
-  private String productId;
+    @Id
+    @Column(name = "product_id", nullable = false)
+    private String productId;
 
-  @Column(name = "product_name", nullable = false)
-  private String productName;
+    @Column(name = "product_name", nullable = false)
+    private String productName;
 
-  @Column(name = "product_type", nullable = false)
-  private String productType;
+    @Column(name = "product_type", nullable = false)
+    private String productType;
 
-  @Column(name = "available_count", nullable = false)
-  private int availableCount;
+    @Column(name = "available_count", nullable = false)
+    private int availableCount;
 
-  @Column(name = "updated_at", nullable = false)
-  private Instant updatedAt;
+    @Column(name = "version", nullable = false)
+    private long version;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
 }

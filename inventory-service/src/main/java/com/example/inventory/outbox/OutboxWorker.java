@@ -80,6 +80,8 @@ public class OutboxWorker {
                                                             event.getProductType(),
                                                             event.getPreviousCount(),
                                                             event.getCurrentCount(),
+                                                            event.getVersion(),
+                                                            event.getOccurredAt(),
                                                             event.getTopic(),
                                                             event.getRetryCount()))
                                     .toList();
@@ -139,8 +141,9 @@ public class OutboxWorker {
                             event.productType(),
                             event.previous(),
                             event.current(),
-                            event.topic(),
-                            Instant.now()));
+                            event.version(),
+                            event.occurredAt() == null ? Instant.now() : event.occurredAt(),
+                            event.topic()));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException(e);
         }
@@ -162,10 +165,24 @@ public class OutboxWorker {
             String productType,
             int previous,
             int current,
+            long version,
+            Instant occurredAt,
             String topic,
             int retryCount) {
         public Event(UUID eventId, String productId, int previous, int current, String topic, int retryCount) {
-            this(eventId, productId, null, null, previous, current, topic, retryCount);
+            this(eventId, productId, null, null, previous, current, 0, null, topic, retryCount);
+        }
+
+        public Event(
+                UUID eventId,
+                String productId,
+                String productName,
+                String productType,
+                int previous,
+                int current,
+                String topic,
+                int retryCount) {
+            this(eventId, productId, productName, productType, previous, current, 0, null, topic, retryCount);
         }
     }
 
@@ -176,7 +193,19 @@ public class OutboxWorker {
             String productType,
             int previousCount,
             int currentCount,
-            String topic,
-            Instant occurredAt) {
+            long version,
+            Instant occurredAt,
+            String topic) {
+        Payload(
+                UUID eventId,
+                String productId,
+                String productName,
+                String productType,
+                int previousCount,
+                int currentCount,
+                String topic,
+                Instant occurredAt) {
+            this(eventId, productId, productName, productType, previousCount, currentCount, 0, occurredAt, topic);
+        }
     }
 }

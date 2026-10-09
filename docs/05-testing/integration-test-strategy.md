@@ -53,31 +53,28 @@ Required scenarios:
 - Query responses are read from Couchbase and do not access PostgreSQL.
 - An InventoryUpdate Kafka event creates a missing Couchbase document.
 - A duplicate InventoryUpdate event does not create an incorrect duplicate state.
-- A repeated InventoryUpdate event safely overwrites the same product document without creating duplicates; stale-event suppression is deferred to Flow 3.5.
+- A repeated InventoryUpdate event safely applies the same product state without creating duplicates.
 - A Couchbase failure does not roll back a committed Inventory command operation.
 - A Kafka consumer failure allows the event to be redelivered safely.
 - Catalogue results are ordered by most recently updated.
 
-## Future Flow 3.5: Versioned inventory events
+## Flow 3.5: Versioned inventory events and increase
 
-When versioning is introduced, add scenarios for:
+The Flow 3.5 implementation must add scenarios for:
 
-- Each authoritative inventory change receives a monotonically increasing product version.
-- The resulting version is included in the InventoryUpdate event.
+- Each successful reduction or manager increase receives exactly one monotonically increasing product version.
+- The resulting version, stable event ID, product details, quantity, and occurrence time are included in the InventoryUpdate event.
 - A newer version replaces an older Couchbase document version.
-- An equal version is ignored as a duplicate.
-- An older version is ignored as stale.
+- An equal version is ignored as a duplicate and an older version is ignored as stale.
+- A missing Couchbase document is safely created by a newer event.
+- A transient Couchbase failure does not acknowledge the Kafka message.
+- A STORE_MANAGER can increase positive inventory and a CUSTOMER receives `403`.
+- Missing products and invalid or missing quantities return the documented error without changing PostgreSQL or Outbox state.
+- Replaying a reduction with the same `orderId` and `productId` returns the original result without another version or event.
+- Query results remain ordered by `updatedAt DESC` with a stable `productId` tie-breaker.
 - Concurrent inventory changes produce correctly ordered versions.
 
-## Future inventory increase flow
-
-When the inventory increase API is defined, add scenarios for:
-
-- Only an authorized STORE_MANAGER can increase inventory.
-- A CUSTOMER cannot call inventory modification endpoints that require manager authorization.
-- An inventory increase creates an InventoryUpdate event.
-- A transition from zero to positive stock creates a NotificationTriggers event.
-- Query and notification consumers remain independent.
+NotificationTriggers remains out of scope for Flow 3.5 and is reserved for Flow 4.
 
 ## Test data and cleanup
 

@@ -18,25 +18,28 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class InventoryOperation {
-  @Id
-  @Column(name = "operation_id", nullable = false)
-  private UUID operationId;
+    @Id
+    @Column(name = "operation_id", nullable = false)
+    private UUID operationId;
 
-  @Column(name = "order_id", nullable = false)
-  private String orderId;
+    @Column(name = "order_id", nullable = false)
+    private String orderId;
 
-  @Column(name = "product_id", nullable = false)
-  private String productId;
+    @Column(name = "product_id", nullable = false)
+    private String productId;
 
-  @Column(nullable = false)
-  private int quantity;
+    @Column(nullable = false)
+    private int quantity;
 
-  @Column(name = "previous_count", nullable = false)
-  private int previousCount;
+    @Column(name = "previous_count", nullable = false)
+    private int previousCount;
 
-  @Column(name = "current_count", nullable = false)
-  private int currentCount;
+    @Column(name = "current_count", nullable = false)
+    private int currentCount;
 
-  @Column(name = "created_at", nullable = false)
-  private Instant createdAt;
+    @Column(name = "version", nullable = false)
+    private long version;
+
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
 }

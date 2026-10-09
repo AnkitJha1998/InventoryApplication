@@ -27,7 +27,9 @@ public class InventoryController {
     }
 
     @Autowired
-    public InventoryController(InventoryService service, @Nullable InventoryQueryService queryService) {
+    public InventoryController(
+            InventoryService service,
+            @Nullable InventoryQueryService queryService) {
         this.service = service;
         this.queryService = queryService;
     }
@@ -36,6 +38,12 @@ public class InventoryController {
     public ResponseEntity<ReductionResponse> reduce(@Valid @RequestBody ReductionRequest request)
             throws BusinessException {
         return ResponseEntity.ok(service.reduce(request));
+    }
+
+    @PostMapping("/increase")
+    public ResponseEntity<IncreaseResponse> increase(@Valid @RequestBody IncreaseRequest request)
+            throws BusinessException, InventoryNotFoundException {
+        return ResponseEntity.ok(service.increase(request));
     }
 
     @GetMapping("/{productId}")

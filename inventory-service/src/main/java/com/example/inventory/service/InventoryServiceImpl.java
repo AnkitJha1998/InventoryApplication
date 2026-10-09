@@ -1,14 +1,16 @@
 package com.example.inventory.service;
 
+import com.example.inventory.api.IncreaseRequest;
+import com.example.inventory.api.IncreaseResponse;
 import com.example.inventory.api.ReductionRequest;
 import com.example.inventory.api.ReductionResponse;
 import com.example.inventory.persistence.entity.Inventory;
 import com.example.inventory.persistence.entity.InventoryOperation;
+import com.example.inventory.persistence.entity.OutboxEvent;
+import com.example.inventory.persistence.entity.OutboxStatus;
 import com.example.inventory.persistence.repository.InventoryOperationRepository;
 import com.example.inventory.persistence.repository.InventoryRepository;
-import com.example.inventory.persistence.entity.OutboxEvent;
 import com.example.inventory.persistence.repository.OutboxEventRepository;
-import com.example.inventory.persistence.entity.OutboxStatus;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class InventoryServiceImpl implements InventoryService {
+    private static final String INVENTORY_UPDATE_TOPIC = "InventoryUpdate";
+
     private final InventoryRepository inventoryRepository;
     private final InventoryOperationRepository operationRepository;
     private final OutboxEventRepository outboxRepository;
@@ -32,18 +36,16 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(rollbackFor = BusinessException.class)
     public ReductionResponse reduce(ReductionRequest request) throws BusinessException {
-        validate(request);
+        validateReduction(request);
 
-        var existing = operationRepository.findByOrderIdAndProductId(request.orderId(), request.productId());
+        var existing = operationRepository.findByOrderIdAndProductId(
+                request.orderId(), request.productId());
         if (existing.isPresent()) {
             return existingResponse(request, existing.get());
         }
 
-        return reduceNew(request);
-    }
-
-    private ReductionResponse reduceNew(ReductionRequest request) throws BusinessException {
-        int updated = inventoryRepository.reduceAvailableCount(request.productId(), request.quantity());
+        int updated = inventoryRepository.reduceAvailableCount(
+                request.productId(), request.quantity());
         if (updated == 0) {
             boolean exists = inventoryRepository.existsById(request.productId());
             throw new BusinessException(exists ? "insufficient stock" : "inventory item not found");
@@ -53,6 +55,8 @@ public class InventoryServiceImpl implements InventoryService {
                 .orElseThrow(() -> new BusinessException("inventory item not found"));
         int current = inventory.getAvailableCount();
         int previous = current + request.quantity();
+        long version = resultingVersion(inventory);
+        Instant occurredAt = Instant.now();
 
         operationRepository.save(
                 InventoryOperation.builder()
@@ -62,17 +66,41 @@ public class InventoryServiceImpl implements InventoryService {
                         .quantity(request.quantity())
                         .previousCount(previous)
                         .currentCount(current)
-                        .createdAt(Instant.now())
+                        .version(version)
+                        .createdAt(occurredAt)
                         .build());
-        saveOutbox(inventory, previous, current, "InventoryUpdate");
-        if (previous == 0 && current > 0) {
-            saveOutbox(inventory, previous, current, "NotificationTriggers");
-        }
-        return new ReductionResponse(request.orderId(), request.productId(), request.quantity(), previous, current, false);
+        saveOutbox(inventory, previous, current, version, occurredAt);
+        return new ReductionResponse(
+                request.orderId(), request.productId(), request.quantity(), previous, current, false, version);
     }
 
-    private ReductionResponse existingResponse(ReductionRequest request, InventoryOperation existing)
-            throws BusinessException {
+    @Override
+    @Transactional(rollbackFor = {BusinessException.class, InventoryNotFoundException.class})
+    public IncreaseResponse increase(IncreaseRequest request)
+            throws BusinessException, InventoryNotFoundException {
+        validateIncrease(request);
+
+        int updated = inventoryRepository.increaseAvailableCount(
+                request.productId(), request.quantity());
+        if (updated == 0) {
+            throw new InventoryNotFoundException(request.productId());
+        }
+
+        Inventory inventory = inventoryRepository.findById(request.productId())
+                .orElseThrow(() -> new InventoryNotFoundException(request.productId()));
+        long version = resultingVersion(inventory);
+        saveOutbox(
+                inventory,
+                inventory.getAvailableCount() - request.quantity(),
+                inventory.getAvailableCount(),
+                version,
+                Instant.now());
+        return new IncreaseResponse(inventory.getProductId(), inventory.getAvailableCount(), version);
+    }
+
+    private ReductionResponse existingResponse(
+            ReductionRequest request,
+            InventoryOperation existing) throws BusinessException {
         if (existing.getQuantity() != request.quantity()) {
             throw new BusinessException("idempotency conflict: quantity differs for orderId/productId");
         }
@@ -82,10 +110,16 @@ public class InventoryServiceImpl implements InventoryService {
                 existing.getQuantity(),
                 existing.getPreviousCount(),
                 existing.getCurrentCount(),
-                true);
+                true,
+                existing.getVersion());
     }
 
-    private void saveOutbox(Inventory inventory, int previous, int current, String topic) {
+    private void saveOutbox(
+            Inventory inventory,
+            int previous,
+            int current,
+            long version,
+            Instant occurredAt) {
         outboxRepository.save(
                 OutboxEvent.builder()
                         .eventId(UUID.randomUUID())
@@ -94,20 +128,37 @@ public class InventoryServiceImpl implements InventoryService {
                         .productType(inventory.getProductType())
                         .previousCount(previous)
                         .currentCount(current)
-                        .topic(topic)
+                        .version(version)
+                        .occurredAt(occurredAt)
+                        .topic(INVENTORY_UPDATE_TOPIC)
                         .status(OutboxStatus.PENDING)
                         .retryCount(0)
-                        .createdAt(Instant.now())
+                        .createdAt(occurredAt)
                         .build());
     }
 
-    private void validate(ReductionRequest request) throws BusinessException {
-        if (request.quantity() == null || request.quantity() <= 0) {
+    private void validateReduction(ReductionRequest request) throws BusinessException {
+        if (request == null
+                || request.quantity() == null
+                || request.quantity() <= 0) {
             throw new BusinessException("quantity must be greater than zero");
         }
         if (blank(request.orderId()) || blank(request.productId())) {
             throw new BusinessException("orderId and productId are required");
         }
+    }
+
+    private void validateIncrease(IncreaseRequest request) throws BusinessException {
+        if (request == null || request.quantity() == null || request.quantity() <= 0) {
+            throw new BusinessException("quantity must be greater than zero");
+        }
+        if (blank(request.productId())) {
+            throw new BusinessException("productId is required");
+        }
+    }
+
+    private long resultingVersion(Inventory inventory) {
+        return inventory.getVersion() == 0 ? 1 : inventory.getVersion();
     }
 
     private boolean blank(String value) {

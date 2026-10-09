@@ -233,3 +233,13 @@ The Outbox event must not be published if its inventory transaction rolls back.
 * Inventory addition and reduction use the same versioning rules.
 * Inventory update, version increment, applicable operation record, and Outbox event creation must participate in the same transaction.
 * Notification processing is not implemented in this flow.
+
+## Inventory Creation
+
+* Provide an inventory creation API for `STORE_MANAGER`.
+* Prevent duplicate inventory records for the same product.
+* Initialize the inventory version using the Flow 3.5 versioning convention.
+* Persist the inventory record and initial `InventoryUpdate` Outbox event in one PostgreSQL transaction.
+* Publish through the existing `InventoryUpdates` pipeline.
+* Reuse the existing version-aware Couchbase consumer.
+

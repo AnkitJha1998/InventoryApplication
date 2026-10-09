@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.example.inventory.api.IncreaseRequest;
 import com.example.inventory.api.ReductionRequest;
 import com.example.inventory.persistence.entity.InventoryOperation;
 import com.example.inventory.persistence.repository.InventoryOperationRepository;
@@ -40,6 +41,33 @@ class InventoryServiceTest {
             .reduce(new ReductionRequest("o", "p", 2));
 
     assertTrue(response.alreadyProcessed());
+  }
+
+  @Test
+  void managerIncreaseUpdatesQuantityVersionAndOutbox() throws Exception {
+    InventoryRepository inventory = mock(InventoryRepository.class);
+    InventoryOperationRepository operations = mock(InventoryOperationRepository.class);
+    OutboxEventRepository outbox = mock(OutboxEventRepository.class);
+    when(inventory.increaseAvailableCount("p", 2)).thenReturn(1);
+    when(inventory.findById("p"))
+        .thenReturn(
+            Optional.of(
+                com.example.inventory.persistence.entity.Inventory.builder()
+                    .productId("p")
+                    .productName("Product")
+                    .productType("STANDARD")
+                    .availableCount(7)
+                    .version(1)
+                    .updatedAt(Instant.now())
+                    .build()));
+
+    var response =
+        new InventoryServiceImpl(inventory, operations, outbox)
+            .increase(new IncreaseRequest("p", 2));
+
+    org.junit.jupiter.api.Assertions.assertEquals(7, response.availableQuantity());
+    org.junit.jupiter.api.Assertions.assertEquals(1, response.version());
+    org.mockito.Mockito.verify(outbox).save(any());
   }
 
   @Test

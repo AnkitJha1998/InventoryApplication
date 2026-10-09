@@ -10,14 +10,28 @@ public record InventoryResponse(
         int availableCount,
         Instant updatedAt,
         int availableQuantity,
-        boolean available) {
+        boolean available,
+        long version) {
     public InventoryResponse(
             String productId,
             String productName,
             String productType,
             int availableCount,
             Instant updatedAt) {
-        this(productId, productName, productType, availableCount, updatedAt, availableCount, availableCount > 0);
+        this(productId, productName, productType, availableCount, updatedAt,
+                availableCount, availableCount > 0, 0);
+    }
+
+    public InventoryResponse(
+            String productId,
+            String productName,
+            String productType,
+            int availableCount,
+            Instant updatedAt,
+            int availableQuantity,
+            boolean available) {
+        this(productId, productName, productType, availableCount, updatedAt,
+                availableQuantity, available, 0);
     }
 
     public static InventoryResponse from(InventoryDocument document) {
@@ -31,6 +45,7 @@ public record InventoryResponse(
                 document.getAvailableCount(),
                 document.getUpdatedAt(),
                 quantity,
-                quantity > 0);
+                quantity > 0,
+                document.getVersion());
     }
 }

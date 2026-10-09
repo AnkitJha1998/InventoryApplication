@@ -36,5 +36,8 @@ public class InventoryDocument {
     private boolean available;
 
     @Field
+    private long version;
+
+    @Field
     private Instant updatedAt;
 }
