@@ -1,5 +1,9 @@
 # Flow 1 inventory reduction
 
+## Deployment
+
+The Azure VM deployment plan and rollout checklist are documented in [`docs/azure-vm-deployment.md`](docs/azure-vm-deployment.md). The repository currently includes Dockerfiles for all four services; the complete Compose deployment is being prepared in the next phase.
+
 Java 21 / Spring Boot implementation of the synchronous order-to-inventory reduction flow. `inventory-service` and `order-service` are independent Maven projects in the same Git repository; there is no central Maven parent project.
 
 ## Modules
