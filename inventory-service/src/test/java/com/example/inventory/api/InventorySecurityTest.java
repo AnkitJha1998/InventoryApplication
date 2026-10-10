@@ -15,9 +15,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(InventoryController.class)
@@ -56,7 +56,8 @@ class InventorySecurityTest {
             post("/inventory/create")
                 .header("Authorization", "Bearer token")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"productId\":\"p\",\"productName\":\"Product\","
+                .content(
+                    "{\"productId\":\"p\",\"productName\":\"Product\","
                         + "\"productType\":\"STANDARD\",\"quantity\":1}"))
         .andExpect(status().isOk());
   }
@@ -70,7 +71,8 @@ class InventorySecurityTest {
             post("/inventory/create")
                 .header("Authorization", "Bearer token")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"productId\":\"p\",\"productName\":\"Product\","
+                .content(
+                    "{\"productId\":\"p\",\"productName\":\"Product\","
                         + "\"productType\":\"STANDARD\",\"quantity\":1}"))
         .andExpect(status().isForbidden());
   }
@@ -80,7 +82,8 @@ class InventorySecurityTest {
     mvc.perform(
             post("/inventory/create")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"productId\":\"p\",\"productName\":\"Product\","
+                .content(
+                    "{\"productId\":\"p\",\"productName\":\"Product\","
                         + "\"productType\":\"STANDARD\",\"quantity\":1}"))
         .andExpect(status().isUnauthorized());
   }
@@ -93,7 +96,8 @@ class InventorySecurityTest {
             post("/inventory/create")
                 .header("Authorization", "Bearer invalid")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"productId\":\"p\",\"productName\":\"Product\","
+                .content(
+                    "{\"productId\":\"p\",\"productName\":\"Product\","
                         + "\"productType\":\"STANDARD\",\"quantity\":1}"))
         .andExpect(status().isUnauthorized());
   }

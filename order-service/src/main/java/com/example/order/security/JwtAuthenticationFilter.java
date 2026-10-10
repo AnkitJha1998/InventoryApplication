@@ -35,8 +35,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 null,
                 List.of(new SimpleGrantedAuthority("ROLE_" + claims.role())));
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        log.info("[doFilterInternal][{}] JWT authentication accepted userId={}",
-            Instant.now(), claims.userId());
+        log.info(
+            "[doFilterInternal][{}] JWT authentication accepted userId={}",
+            Instant.now(),
+            claims.userId());
       } catch (JwtValidationException exception) {
         log.error("[doFilterInternal][{}] JWT authentication rejected", Instant.now(), exception);
         // Leave the context anonymous; the security chain returns 401 for protected routes.

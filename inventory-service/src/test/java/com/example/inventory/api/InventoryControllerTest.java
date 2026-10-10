@@ -13,8 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(InventoryController.class)
@@ -26,13 +26,13 @@ class InventoryControllerTest {
 
   @Test
   void createsInventoryWithInitialVersion() throws Exception {
-    when(service.create(any())).thenReturn(
-        new CreateResponse("p", "Product", "STANDARD", 5, 1));
+    when(service.create(any())).thenReturn(new CreateResponse("p", "Product", "STANDARD", 5, 1));
 
     mvc.perform(
             post("/inventory/create")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"productId\":\"p\",\"productName\":\"Product\","
+                .content(
+                    "{\"productId\":\"p\",\"productName\":\"Product\","
                         + "\"productType\":\"STANDARD\",\"quantity\":5}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.productId").value("p"))
@@ -45,7 +45,8 @@ class InventoryControllerTest {
     mvc.perform(
             post("/inventory/create")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"productId\":\"p\",\"productName\":\"\","
+                .content(
+                    "{\"productId\":\"p\",\"productName\":\"\","
                         + "\"productType\":\"STANDARD\",\"quantity\":0}"))
         .andExpect(status().isBadRequest());
   }
@@ -64,8 +65,7 @@ class InventoryControllerTest {
   void queriesPagedCatalogue() throws Exception {
     when(queryService.findAll(0, 20))
         .thenReturn(new InventoryPageResponse(java.util.List.of(), 0, 20, 0, 0));
-    mvc.perform(get("/inventory"))
-        .andExpect(status().isOk());
+    mvc.perform(get("/inventory")).andExpect(status().isOk());
   }
 
   @Test

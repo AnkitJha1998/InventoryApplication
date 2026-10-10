@@ -1,6 +1,8 @@
 package com.example.inventory.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -103,7 +105,7 @@ class InventoryServiceTest {
 
     var response =
         new InventoryServiceImpl(inventory, mock(InventoryOperationRepository.class), outbox)
-            .create(new CreateRequest("p", "Product", "STANDARD", 5));
+            .create(new CreateRequest("Product", "STANDARD", 5));
 
     assertEquals(1, response.version());
     assertEquals(5, response.availableQuantity());
@@ -112,7 +114,7 @@ class InventoryServiceTest {
             com.example.inventory.persistence.entity.OutboxEvent.class);
     org.mockito.Mockito.verify(outbox).save(event.capture());
     assertEquals(1, event.getValue().getVersion());
-    assertEquals("p", event.getValue().getProductId());
+    assertDoesNotThrow(() -> UUID.fromString(event.getValue().getProductId()));
     assertEquals("Product", event.getValue().getProductName());
     assertEquals("STANDARD", event.getValue().getProductType());
     assertEquals(5, event.getValue().getCurrentCount());
@@ -122,18 +124,18 @@ class InventoryServiceTest {
   }
 
   @Test
-  void duplicateCreationIsRejectedWithoutWritingOutbox() {
+  void eachCreationGeneratesAProductId() throws Exception {
     InventoryRepository inventory = mock(InventoryRepository.class);
     OutboxEventRepository outbox = mock(OutboxEventRepository.class);
-    when(inventory.existsById("p")).thenReturn(true);
+    var service =
+        new InventoryServiceImpl(inventory, mock(InventoryOperationRepository.class), outbox);
 
-    assertThrows(
-        BusinessException.class,
-        () ->
-            new InventoryServiceImpl(inventory, mock(InventoryOperationRepository.class), outbox)
-                .create(new CreateRequest("p", "Product", "STANDARD", 5)));
-    org.mockito.Mockito.verify(inventory, org.mockito.Mockito.never()).save(any());
-    org.mockito.Mockito.verifyNoInteractions(outbox);
+    var first = service.create(new CreateRequest("Product", "STANDARD", 5));
+    var second = service.create(new CreateRequest("Product", "STANDARD", 5));
+
+    assertNotEquals(first.productId(), second.productId());
+    org.mockito.Mockito.verify(inventory, org.mockito.Mockito.times(2)).save(any());
+    org.mockito.Mockito.verify(outbox, org.mockito.Mockito.times(2)).save(any());
   }
 
   @Test
@@ -145,7 +147,7 @@ class InventoryServiceTest {
         BusinessException.class,
         () ->
             new InventoryServiceImpl(inventory, mock(InventoryOperationRepository.class), outbox)
-                .create(new CreateRequest("p", "Product", "STANDARD", 0)));
+                .create(new CreateRequest("Product", "STANDARD", 0)));
     org.mockito.Mockito.verifyNoInteractions(inventory, outbox);
   }
 

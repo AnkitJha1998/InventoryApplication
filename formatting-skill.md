@@ -71,7 +71,14 @@ User.builder()
 
 - Services, service implementations, controllers, filters, and configuration classes use explicit constructors.
 - Do not apply Lombok constructor annotations outside entities.
+- Keep exactly one intentional constructor per non-entity class; do not add compatibility, overload, or redundant constructors.
 - Keep service interfaces separate from `*Impl` classes.
+
+## Persistence implementation preference
+
+- Prefer Spring Data repositories/templates/converters for persistence when they satisfy the requirement.
+- Before introducing a raw database SDK, explicitly compare it with the Spring Data approach and ask for approval if the raw SDK would create a mixed persistence model.
+- Do not mix raw Couchbase SDK serialization with Spring Data repository queries without an explicit type-metadata and mapping strategy.
 
 ## Logging policy
 

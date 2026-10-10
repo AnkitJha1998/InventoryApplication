@@ -8,10 +8,10 @@ import com.example.inventory.api.ReductionRequest;
 import com.example.inventory.api.ReductionResponse;
 
 public interface InventoryService {
-    CreateResponse create(CreateRequest request) throws BusinessException;
+  CreateResponse create(CreateRequest request) throws BusinessException;
 
-    ReductionResponse reduce(ReductionRequest request) throws BusinessException;
+  ReductionResponse reduce(ReductionRequest request) throws BusinessException;
 
-    IncreaseResponse increase(IncreaseRequest request)
-            throws BusinessException, InventoryNotFoundException;
+  IncreaseResponse increase(IncreaseRequest request)
+      throws BusinessException, InventoryNotFoundException;
 }

@@ -196,7 +196,7 @@ Invoke-RestMethod `
   -Method Post `
   -Headers $headers `
   -ContentType "application/json" `
-  -Body '{"productId":"P1001","productName":"Demo Laptop","productType":"ELECTRONICS","quantity":5}'
+  -Body '{"productName":"Demo Laptop","productType":"ELECTRONICS","quantity":5}'
 ```
 
 Expected result:
@@ -343,7 +343,7 @@ Invoke-RestMethod `
   -Method Post `
   -Headers $orderHeaders `
   -ContentType "application/json" `
-  -Body '{"productId":"P2001","productName":"Other Product","productType":"STANDARD","quantity":5}'
+  -Body '{"productName":"Other Product","productType":"STANDARD","quantity":5}'
 ```
 
 Expected:

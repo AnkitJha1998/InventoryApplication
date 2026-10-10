@@ -19,49 +19,48 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/inventory")
 public class InventoryController {
-    private final InventoryService service;
-    private final InventoryQueryService queryService;
+  private final InventoryService service;
+  private final InventoryQueryService queryService;
 
-    public InventoryController(InventoryService service) {
-        this(service, null);
-    }
+  public InventoryController(InventoryService service) {
+    this(service, null);
+  }
 
-    @Autowired
-    public InventoryController(
-            InventoryService service,
-            @Nullable InventoryQueryService queryService) {
-        this.service = service;
-        this.queryService = queryService;
-    }
+  @Autowired
+  public InventoryController(
+      InventoryService service, @Nullable InventoryQueryService queryService) {
+    this.service = service;
+    this.queryService = queryService;
+  }
 
-    @PostMapping("/create")
-    public ResponseEntity<CreateResponse> create(@Valid @RequestBody CreateRequest request)
-            throws BusinessException {
-        return ResponseEntity.ok(service.create(request));
-    }
+  @PostMapping("/create")
+  public ResponseEntity<CreateResponse> create(@Valid @RequestBody CreateRequest request)
+      throws BusinessException {
+    return ResponseEntity.ok(service.create(request));
+  }
 
-    @PostMapping("/reduce")
-    public ResponseEntity<ReductionResponse> reduce(@Valid @RequestBody ReductionRequest request)
-            throws BusinessException {
-        return ResponseEntity.ok(service.reduce(request));
-    }
+  @PostMapping("/reduce")
+  public ResponseEntity<ReductionResponse> reduce(@Valid @RequestBody ReductionRequest request)
+      throws BusinessException {
+    return ResponseEntity.ok(service.reduce(request));
+  }
 
-    @PostMapping("/increase")
-    public ResponseEntity<IncreaseResponse> increase(@Valid @RequestBody IncreaseRequest request)
-            throws BusinessException, InventoryNotFoundException {
-        return ResponseEntity.ok(service.increase(request));
-    }
+  @PostMapping("/increase")
+  public ResponseEntity<IncreaseResponse> increase(@Valid @RequestBody IncreaseRequest request)
+      throws BusinessException, InventoryNotFoundException {
+    return ResponseEntity.ok(service.increase(request));
+  }
 
-    @GetMapping("/{productId}")
-    public ResponseEntity<InventoryResponse> findByProductId(@PathVariable String productId)
-            throws InventoryNotFoundException {
-        return ResponseEntity.ok(queryService.findByProductId(productId));
-    }
+  @GetMapping("/{productId}")
+  public ResponseEntity<InventoryResponse> findByProductId(@PathVariable String productId)
+      throws InventoryNotFoundException {
+    return ResponseEntity.ok(queryService.findByProductId(productId));
+  }
 
-    @GetMapping
-    public ResponseEntity<InventoryPageResponse> findAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) throws BusinessException {
-        return ResponseEntity.ok(queryService.findAll(page, size));
-    }
+  @GetMapping
+  public ResponseEntity<InventoryPageResponse> findAll(
+      @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size)
+      throws BusinessException {
+    return ResponseEntity.ok(queryService.findAll(page, size));
+  }
 }

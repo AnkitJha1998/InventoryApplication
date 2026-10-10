@@ -100,7 +100,7 @@ $managerHeaders = @{
     Authorization = "Bearer $managerToken"
 }
 
-curl.exe -i -X POST http://localhost:8081/inventory/create -H "Authorization: Bearer $managerToken" -H "Content-Type: application/json" -d '{"productId":"P1001","productName":"Demo Laptop","productType":"ELECTRONICS","quantity":5}'
+curl.exe -i -X POST http://localhost:8081/inventory/create -H "Authorization: Bearer $managerToken" -H "Content-Type: application/json" -d '{"productName":"Demo Laptop","productType":"ELECTRONICS","quantity":5}'
 ```
 
 Expected:
@@ -255,7 +255,7 @@ curl.exe -i -X GET http://localhost:8083/notifications/count -H "Authorization: 
 Customer cannot create inventory:
 
 ```powershell
-curl.exe -i -X POST http://localhost:8081/inventory/create -H "Authorization: Bearer $customerToken" -H "Content-Type: application/json" -d '{"productId":"P2001","productName":"Unauthorized Product","productType":"STANDARD","quantity":5}'
+curl.exe -i -X POST http://localhost:8081/inventory/create -H "Authorization: Bearer $customerToken" -H "Content-Type: application/json" -d '{"productName":"Unauthorized Product","productType":"STANDARD","quantity":5}'
 ```
 
 Expected:
@@ -328,7 +328,7 @@ curl --location --request POST 'http://localhost:8082/auth/login' --header 'Cont
 ## Create Inventory
 
 ```bash
-curl --location --request POST 'http://localhost:8081/inventory/create' --header 'Authorization: Bearer <MANAGER_TOKEN>' --header 'Content-Type: application/json' --data '{"productId":"P1001","productName":"Demo Laptop","productType":"ELECTRONICS","quantity":5}'
+curl --location --request POST 'http://localhost:8081/inventory/create' --header 'Authorization: Bearer <MANAGER_TOKEN>' --header 'Content-Type: application/json' --data '{"productName":"Demo Laptop","productType":"ELECTRONICS","quantity":5}'
 ```
 
 ## Get One Inventory Product
@@ -384,7 +384,7 @@ curl --location --request PATCH 'http://localhost:8083/notifications/read' --hea
 ## Customer Authorization Check
 
 ```bash
-curl --location --request POST 'http://localhost:8081/inventory/create' --header 'Authorization: Bearer <CUSTOMER_TOKEN>' --header 'Content-Type: application/json' --data '{"productId":"P2001","productName":"Unauthorized Product","productType":"STANDARD","quantity":5}'
+curl --location --request POST 'http://localhost:8081/inventory/create' --header 'Authorization: Bearer <CUSTOMER_TOKEN>' --header 'Content-Type: application/json' --data '{"productName":"Unauthorized Product","productType":"STANDARD","quantity":5}'
 ```
 
 Expected response:
