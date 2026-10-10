@@ -2,6 +2,7 @@ package com.example.inventory.api_bdd;
 
 import com.example.inventory.security.JwtService;
 import com.example.inventory.security.SecurityConfig;
+import com.example.inventory.service.InventoryQueryService;
 import com.example.inventory.service.InventoryService;
 import io.cucumber.spring.CucumberContextConfiguration;
 import org.mockito.Mockito;
@@ -24,5 +25,10 @@ class CucumberInventoryTestConfiguration {
     @Bean
     InventoryService inventoryService() {
         return Mockito.mock(InventoryService.class);
+    }
+
+    @Bean
+    InventoryQueryService inventoryQueryService() {
+        return Mockito.mock(InventoryQueryService.class);
     }
 }

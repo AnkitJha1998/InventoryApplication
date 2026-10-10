@@ -7,17 +7,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.inventory.api.CreateRequest;
 import com.example.inventory.api.CreateResponse;
+import com.example.inventory.api.ReductionResponse;
 import com.example.inventory.consumer.InventoryUpdateConsumer;
 import com.example.inventory.outbox.OutboxWorker;
 import com.example.inventory.persistence.entity.Inventory;
+import com.example.inventory.persistence.entity.InventoryDocument;
 import com.example.inventory.persistence.entity.OutboxEvent;
 import com.example.inventory.persistence.entity.OutboxStatus;
 import com.example.inventory.persistence.repository.InventoryDocumentWriter;
+import com.example.inventory.persistence.repository.InventoryOperationRepository;
 import com.example.inventory.persistence.repository.InventoryRepository;
 import com.example.inventory.persistence.repository.OutboxEventRepository;
 import com.example.inventory.service.BusinessException;
@@ -25,9 +30,11 @@ import com.example.inventory.service.InventoryService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cucumber.java.Before;
+import io.cucumber.java.en.Given;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -42,6 +49,9 @@ public class InventoryCreationPersistenceSteps {
 
     @Autowired
     private InventoryRepository inventoryRepository;
+
+    @Autowired
+    private InventoryOperationRepository operationRepository;
 
     @Autowired
     private OutboxEventRepository outboxRepository;
@@ -66,22 +76,137 @@ public class InventoryCreationPersistenceSteps {
     private boolean creationFailed;
     private String publishedPayload;
     private String publishedTopic;
+    private ReductionResponse reductionResponse;
+    private String reductionError;
     private org.springframework.kafka.support.Acknowledgment acknowledgment;
+    private org.springframework.kafka.support.Acknowledgment versioningAcknowledgment;
 
     @Before
     public void resetScenario() {
         outboxRepository.deleteAll();
+        operationRepository.deleteAll();
         inventoryRepository.deleteAll();
         reset(kafkaTemplate, documentWriter);
         when(kafkaTemplate.send(anyString(), anyString(), anyString()))
                 .thenReturn(CompletableFuture.completedFuture(null));
         creationResponse = null;
+        reductionResponse = null;
+        reductionError = null;
         attemptedProductName = null;
         creationFailed = false;
         publishedPayload = null;
         publishedTopic = null;
         acknowledgment = org.mockito.Mockito.mock(
                 org.springframework.kafka.support.Acknowledgment.class);
+        versioningAcknowledgment = org.mockito.Mockito.mock(
+                org.springframework.kafka.support.Acknowledgment.class);
+    }
+
+    @When("an InventoryUpdate event for {string} with version {long} and quantity {int} is consumed")
+    public void consumeVersionedEvent(String productId, long version, int quantity) throws Exception {
+        String event = objectMapper.writeValueAsString(new com.example.inventory.consumer.InventoryUpdate(
+                UUID.randomUUID(), productId, "Versioned Product", "ELECTRONICS", 0,
+                quantity, version, "InventoryUpdate", java.time.Instant.now()));
+        try {
+            consumer.consume(event, versioningAcknowledgment);
+        } catch (RuntimeException ignored) {
+            // The following assertion verifies acknowledgment state for failure scenarios.
+        }
+    }
+
+    @Given("the CAS writer is unavailable")
+    public void casWriterUnavailable() {
+        doThrow(new IllegalStateException("temporarily unavailable"))
+                .when(documentWriter).applyIfNewer(any(InventoryDocument.class));
+    }
+
+    @Then("the CAS writer should receive product {string} with version {long} and quantity {int}")
+    public void casWriterReceivesVersionedProduct(String productId, long version, int quantity) {
+        var captor = ArgumentCaptor.forClass(InventoryDocument.class);
+        verify(documentWriter).applyIfNewer(captor.capture());
+        assertEquals(productId, captor.getValue().getProductId());
+        assertEquals(version, captor.getValue().getVersion());
+        assertEquals(quantity, captor.getValue().getAvailableQuantity());
+    }
+
+    @Then("the InventoryUpdate event should be acknowledged")
+    public void versionedEventShouldBeAcknowledged() {
+        verify(versioningAcknowledgment).acknowledge();
+    }
+
+    @Then("the InventoryUpdate event should not be acknowledged")
+    public void versionedEventShouldNotBeAcknowledged() {
+        verify(versioningAcknowledgment, never()).acknowledge();
+    }
+
+    @Given("inventory product {string} exists with quantity {int}")
+    public void inventoryProductExists(String productId, int quantity) {
+        inventoryRepository.save(Inventory.builder()
+                .productId(productId)
+                .productName(productId)
+                .productType("ELECTRONICS")
+                .availableCount(quantity)
+                .version(0)
+                .updatedAt(Instant.now())
+                .build());
+    }
+
+    @When("order {string} reduces product {string} by {int}")
+    public void reduceOrder(String orderId, String productId, int quantity) {
+        try {
+            reductionResponse = inventoryService.reduce(
+                    new com.example.inventory.api.ReductionRequest(orderId, productId, quantity));
+        } catch (BusinessException exception) {
+            reductionError = exception.getMessage();
+        }
+    }
+
+    @When("order {string} reduces product {string} by {int} again")
+    public void reduceOrderAgain(String orderId, String productId, int quantity) {
+        reduceOrder(orderId, productId, quantity);
+    }
+
+    @Then("the reduction current quantity should be {int}")
+    public void reductionCurrentQuantity(int quantity) {
+        assertEquals(quantity, reductionResponse.currentCount());
+    }
+
+    @Then("one inventory operation should exist for order {string}")
+    public void oneOperationShouldExist(String orderId) {
+        assertEquals(1, operationRepository.findAll().stream()
+                .filter(operation -> operation.getOrderId().equals(orderId)).count());
+    }
+
+    @Then("one InventoryUpdate Outbox event should exist for product {string}")
+    public void outboxEventShouldExist(String productId) {
+        assertEquals(1, outboxRepository.findAll().stream()
+                .filter(event -> event.getProductId().equals(productId))
+                .count());
+    }
+
+    @Then("the second reduction should be marked already processed")
+    public void secondReductionAlreadyProcessed() {
+        assertTrue(reductionResponse.alreadyProcessed());
+    }
+
+    @Then("the product quantity should remain {int}")
+    public void productQuantityShouldRemain(int quantity) {
+        String productId = reductionResponse == null
+                ? (reductionError != null && reductionError.equals("insufficient stock")
+                    ? "limited-product" : "idempotent-product")
+                : reductionResponse.productId();
+        Inventory inventory = inventoryRepository.findById(productId).orElseThrow();
+        assertEquals(quantity, inventory.getAvailableCount());
+    }
+
+    @Then("the reduction should fail with an idempotency conflict")
+    public void reductionIdempotencyConflict() {
+        assertTrue(reductionError.contains("idempotency conflict"));
+    }
+
+    @Then("the reduction should fail with insufficient stock")
+    public void reductionInsufficientStock() {
+        assertEquals("insufficient stock", reductionError);
     }
 
     @When("the service creates product {string} of type {string} with quantity {int}")
