@@ -5,12 +5,15 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private final JwtService jwtService;
 
@@ -32,7 +35,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     claims.userId().toString(),
                     null,
                     List.of(new SimpleGrantedAuthority("ROLE_" + claims.role()))));
-      } catch (JwtValidationException ignored) {
+        log.info("[doFilterInternal][{}] JWT authentication accepted userId={}",
+            Instant.now(), claims.userId());
+      } catch (JwtValidationException exception) {
+        log.error("[doFilterInternal][{}] JWT authentication rejected", Instant.now(), exception);
         // Security authorization returns 401 for an invalid or expired token.
       }
     }

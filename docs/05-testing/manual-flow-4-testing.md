@@ -307,7 +307,7 @@ The Notification Service should consume the trigger and create a notification en
 
 ```text
 message = Demo Laptop is now available
-status  = PREPARED
+status  = CREATED
 ```
 
 The matching back-in-stock request should become:

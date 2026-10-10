@@ -1,144 +1,28 @@
-\# Flow 05 - In-App Notification Processing
+# Flow 05 - In-App Notification Processing
 
+## Purpose
 
+Create in-app notifications for customers who requested back-in-stock alerts and provide APIs to retrieve and bulk-mark their notifications as read.
 
-\## Purpose
+## Flow A - Process Back-in-Stock Event
 
+Kafka topic `NotificationTrigger` delivers the InventoryUpdate-compatible payload. The Notification Service validates the payload, checks the processed-event table, and finds ACTIVE requests for the product. In one checked-exception transactional operation it creates one notification per request with status `CREATED` and message `<productName> is now available`, marks requests `COMPLETED`, and records the event ID. Kafka acknowledgment occurs only after commit. Malformed payloads, duplicate event IDs, and events without active requests are acknowledged without creating records.
 
+## Flow B - Retrieve Notifications
 
-Create in-app notifications for customers who requested back-in-stock alerts and provide APIs to retrieve and manage their notifications.
+A CUSTOMER calls `GET /notifications/count` or `GET /notifications?page=0&size=20`. The service validates JWT ownership, counts only `CREATED` records, or returns customer-scoped notifications ordered by `createdAt DESC, notificationId ASC` with pagination metadata.
 
+## Flow C - Bulk Mark Notifications as Read
 
+A CUSTOMER calls `PATCH /notifications/read` with a non-empty `notificationIds` list. The service updates only matching records owned by the authenticated customer and currently in `CREATED` status. Already-read and other-customer IDs are ignored, and the response reports `updatedCount`. There is no single-notification read endpoint.
 
-\## Flow A - Process Back-in-Stock Event
+## Rules
 
-
-
-Kafka: NotificationTrigger
-
-&#x20;   |
-
-&#x20;   v
-
-Notification Service
-
-&#x20;   |
-
-&#x20;   | Find ACTIVE requests matching productId
-
-&#x20;   | Prevent duplicate event processing
-
-&#x20;   v
-
-Notification PostgreSQL Transaction
-
-&#x20;   |
-
-&#x20;   | Create in-app notification for each matching customer
-
-&#x20;   | Mark corresponding request as NOTIFIED
-
-&#x20;   | Record event processing
-
-&#x20;   v
-
-Processing Complete
-
-
-
-\## Flow B - Retrieve Notifications
-
-
-
-Customer UI
-
-&#x20;   |
-
-&#x20;   | GET /notifications/count
-
-&#x20;   | GET /notifications?page=0\&size=20
-
-&#x20;   v
-
-Notification Service
-
-&#x20;   |
-
-&#x20;   | Validate JWT
-
-&#x20;   | Identify customer from JWT
-
-&#x20;   v
-
-Notification PostgreSQL
-
-&#x20;   |
-
-&#x20;   | Retrieve unread count or paginated notifications
-
-&#x20;   v
-
-Return Notification Data
-
-
-
-\## Flow C - Mark Notifications as Read
-
-
-
-Customer UI
-
-&#x20;   |
-
-&#x20;   | PATCH /notifications/{notificationId}/read
-
-&#x20;   | PATCH /notifications/read
-
-&#x20;   v
-
-Notification Service
-
-&#x20;   |
-
-&#x20;   | Validate JWT
-
-&#x20;   | Identify customer from JWT
-
-&#x20;   | Update only the customer's notifications
-
-&#x20;   v
-
-Notification PostgreSQL
-
-&#x20;   |
-
-&#x20;   v
-
-Return Update Result
-
-
-
-\## Rules
-
-
-
-\- Consume events from Kafka topic NotificationTrigger.
-
-\- Create notifications only for matching ACTIVE notification requests.
-
-\- Store notifications in Notification Service PostgreSQL.
-
-\- Create notifications, update request status, and record event processing consistently.
-
-\- Prevent duplicate notifications when Kafka events are redelivered.
-
-\- Do not send email, SMS, or push notifications.
-
-\- Customers can retrieve and update only their own notifications.
-
-\- Support unread count and zero-based paginated retrieval.
-
-\- Already-read notifications remain read when read operations are repeated.
-
-\- Notification request status is independent of notification read status.
-
+- Consume events from Kafka topic `NotificationTrigger` with group `notification-consumer`.
+- Notification statuses are exactly `CREATED` (unread/new) and `NOTIFIED` (read).
+- Back-in-stock request statuses are exactly `ACTIVE` and `COMPLETED`.
+- Store notifications in Notification Service PostgreSQL.
+- Keep notification creation, request completion, and event processing consistent.
+- Prevent duplicate notifications when Kafka events are redelivered.
+- Do not send email, SMS, or push notifications.
+- Customers can retrieve and update only their own notifications.

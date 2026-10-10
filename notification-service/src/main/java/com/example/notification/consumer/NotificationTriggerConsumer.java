@@ -1,39 +1,65 @@
 package com.example.notification.consumer;
 
 import com.example.notification.service.NotificationException;
-import com.example.notification.service.NotificationTriggerService;
+import com.example.notification.service.NotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.time.Instant;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
 @Component
+@Slf4j
 public class NotificationTriggerConsumer {
-  private static final Logger LOGGER =
-      Logger.getLogger(NotificationTriggerConsumer.class.getName());
   private final ObjectMapper objectMapper;
-  private final NotificationTriggerService triggerService;
+  private final NotificationService notificationService;
 
+  @Autowired
   public NotificationTriggerConsumer(
-      ObjectMapper objectMapper, NotificationTriggerService triggerService) {
+      ObjectMapper objectMapper, NotificationService notificationService) {
     this.objectMapper = objectMapper;
     this.objectMapper.findAndRegisterModules();
-    this.triggerService = triggerService;
+    this.notificationService = notificationService;
   }
 
-  @KafkaListener(topics = "NotificationTrigger", groupId = "${notification.consumer.group}")
+  @KafkaListener(
+      topics = "NotificationTrigger",
+      groupId = "${notification.consumer.group:notification-consumer}")
   public void onMessage(String payload, Acknowledgment acknowledgment) {
+    log.info("[onMessage][{}] consumer entry", Instant.now());
+    final NotificationTrigger trigger;
     try {
-      NotificationTrigger trigger = objectMapper.readValue(payload, NotificationTrigger.class);
-      triggerService.process(trigger);
-      acknowledgment.acknowledge();
-    } catch (NotificationException | RuntimeException exception) {
-      // Do not acknowledge. Kafka will redeliver after a transient database failure.
-      LOGGER.log(Level.WARNING, "NotificationTrigger was not processed", exception);
+      trigger = objectMapper.readValue(payload, NotificationTrigger.class);
     } catch (Exception exception) {
-      LOGGER.log(Level.WARNING, "NotificationTrigger payload could not be read", exception);
+      log.error("[onMessage][{}] malformed NotificationTrigger payload acknowledged",
+          Instant.now(), exception);
+      acknowledgment.acknowledge();
+      return;
+    }
+    if (trigger == null
+        || trigger.eventId() == null
+        || trigger.productId() == null
+        || trigger.productId().isBlank()
+        || trigger.productName() == null
+        || trigger.productName().isBlank()
+        || trigger.occurredAt() == null
+        || trigger.topic() == null
+        || !"NotificationTrigger".equals(trigger.topic())) {
+      log.error("[onMessage][{}] malformed NotificationTrigger payload acknowledged",
+          Instant.now());
+      acknowledgment.acknowledge();
+      return;
+    }
+    try {
+      notificationService.process(trigger);
+      acknowledgment.acknowledge();
+      log.info("[onMessage][{}] NotificationTrigger processed eventId={} productId={}",
+          Instant.now(), trigger.eventId(), trigger.productId());
+    } catch (NotificationException | RuntimeException exception) {
+      log.error("[onMessage][{}] NotificationTrigger was not processed eventId={} productId={}",
+          Instant.now(), trigger.eventId(), trigger.productId(), exception);
     }
   }
 }

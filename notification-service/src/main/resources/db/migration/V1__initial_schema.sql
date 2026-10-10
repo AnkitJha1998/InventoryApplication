@@ -20,11 +20,13 @@ CREATE TABLE notifications (
     request_id UUID NOT NULL REFERENCES back_in_stock_requests(request_id),
     event_id UUID NOT NULL,
     message VARCHAR(512) NOT NULL,
-    status VARCHAR(16) NOT NULL CHECK (status IN ('PREPARED', 'READ')),
+    status VARCHAR(16) NOT NULL CHECK (status IN ('CREATED', 'NOTIFIED')),
     created_at TIMESTAMPTZ NOT NULL,
     read_at TIMESTAMPTZ
 );
-CREATE INDEX idx_notifications_customer ON notifications(customer_id, created_at);
+CREATE UNIQUE INDEX uq_notifications_event_request
+    ON notifications(event_id, request_id);
+CREATE INDEX idx_notifications_customer ON notifications(customer_id, created_at, notification_id);
 
 CREATE TABLE processed_events (
     event_id UUID PRIMARY KEY,

@@ -7,11 +7,13 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.UUID;
 import javax.crypto.Mac;
+import lombok.extern.slf4j.Slf4j;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 public class JwtService {
   private final ObjectMapper objectMapper;
   private final byte[] secret;
@@ -42,6 +44,7 @@ public class JwtService {
       String content = encodedHeader + "." + encodedClaims;
       return content + "." + new String(sign(content), StandardCharsets.US_ASCII);
     } catch (Exception e) {
+      log.error("[issue][{}] access token creation failed userId={}", Instant.now(), userId, e);
       throw new IllegalStateException("could not create access token", e);
     }
   }

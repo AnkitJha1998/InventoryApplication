@@ -9,8 +9,14 @@ spring:
         password: ${AZURE_DB_PASSWORD}
     flyway:
         enabled: true
+        schemas: ${NOTIFICATION_DB_SCHEMA:notification_service}
+        default-schema: ${NOTIFICATION_DB_SCHEMA:notification_service}
+        create-schemas: true
     jpa:
         open-in-view: false
+        properties:
+            hibernate:
+                default_schema: ${NOTIFICATION_DB_SCHEMA:notification_service}
     kafka:
         bootstrap-servers: ${AZURE_KAFKA_BOOTSTRAP_SERVERS}
         consumer:

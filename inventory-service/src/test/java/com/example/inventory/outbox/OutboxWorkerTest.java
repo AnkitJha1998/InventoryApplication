@@ -49,6 +49,6 @@ class OutboxWorkerTest {
     worker.claim();
 
     verify(outbox).claimCandidates(5, 20);
-    verify(outbox).save(event);
+    verify(outbox).saveAll(List.of(event));
   }
 }

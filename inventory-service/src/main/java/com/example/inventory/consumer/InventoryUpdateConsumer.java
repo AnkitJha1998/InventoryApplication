@@ -5,17 +5,17 @@ import com.example.inventory.persistence.repository.InventoryDocumentRepository;
 import com.example.inventory.persistence.repository.InventoryDocumentWriter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
 @Component
+@Slf4j
 public class InventoryUpdateConsumer {
-    private static final Logger LOGGER = LoggerFactory.getLogger(InventoryUpdateConsumer.class);
 
     private final InventoryDocumentRepository repository;
     private final InventoryDocumentWriter writer;
@@ -42,11 +42,12 @@ public class InventoryUpdateConsumer {
             topics = "InventoryUpdate",
             groupId = "${inventory.query.consumer-group:inventory-query-read-model}")
     public void consume(String payload, Acknowledgment acknowledgment) {
+        log.info("[consume][{}] consumer entry", Instant.now());
         final InventoryUpdate event;
         try {
             event = objectMapper.readValue(payload, InventoryUpdate.class);
         } catch (JsonProcessingException exception) {
-            LOGGER.error("Unable to parse InventoryUpdate event", exception);
+            log.error("[consume][{}] unable to parse InventoryUpdate event", Instant.now(), exception);
             return;
         }
 
@@ -63,10 +64,13 @@ public class InventoryUpdateConsumer {
                             .updatedAt(event.occurredAt())
                             .build());
         } catch (RuntimeException exception) {
-            LOGGER.error("Unable to persist InventoryUpdate read model", exception);
+            log.error("[consume][{}] unable to persist InventoryUpdate read model productId={}",
+                    Instant.now(), event.productId(), exception);
             throw exception;
         }
         acknowledgment.acknowledge();
+        log.info("[consume][{}] InventoryUpdate processed eventId={} productId={}",
+                Instant.now(), event.eventId(), event.productId());
     }
 
     private static final class RepositoryInventoryDocumentWriter

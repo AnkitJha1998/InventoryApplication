@@ -483,25 +483,10 @@ The values above are illustrative. The actual response must contain the resultin
 ### Rules
 
 - Return only notifications belonging to the authenticated customer.
-- Sort by createdAt descending.
+- Sort by `createdAt` descending, then `notificationId` ascending.
+- Notification status is `CREATED` when unread and `NOTIFIED` when read.
 - Return an empty content array when no notifications match.
 - Return totalElements and totalPages for pagination.
-
-## 15. Mark One Notification as Read
-
-**Endpoint:** PATCH /notifications/{notificationId}/read
-
-**Authorization:** CUSTOMER
-
-### Success Response
-
-**Status:** 200 OK
-
-### Rules
-
-- Mark the specified notification as read if it belongs to the authenticated customer.
-- Repeated requests must be safe.
-- Do not expose or modify another customer's notification.
 
 ## 16. Mark Multiple Notifications as Read
 
@@ -526,7 +511,7 @@ The values above are illustrative. The actual response must contain the resultin
 ### Rules
 
 - Accept a non-empty list of notification IDs.
-- Mark matching unread notifications belonging to the authenticated customer as read.
+- Mark matching `CREATED` notifications belonging to the authenticated customer as `NOTIFIED`.
 - updatedCount is the number changed from unread to read.
 - Already-read notifications do not increase updatedCount.
 - Do not modify notifications belonging to other customers.

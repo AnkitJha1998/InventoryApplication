@@ -34,7 +34,7 @@ mvn clean verify
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Local development defaults are PostgreSQL `localhost:5432`, database `inventory`, user/password `postgres/postgres`, Kafka `localhost:9092`, Couchbase `couchbase://localhost` (`Administrator`/`password`), Inventory Service `http://localhost:8081`, and Notification Service `http://localhost:8083`. Run each project with the `dev` profile. Production/Azure values are configured through the environment variables used by each service's `application.yaml`.
+Local development defaults are PostgreSQL `localhost:5432`, database `inventory`, user/password `postgres/root`, Kafka `localhost:9092`, Couchbase `couchbase://localhost` (`Administrator`/`password`), Inventory Service `http://localhost:8081`, and Notification Service `http://localhost:8083`. PostgreSQL uses one database with service-owned schemas: `user_service`, `inventory_service`, and `notification_service`. Each service now has one consolidated Flyway `V1__initial_schema.sql`; Flyway creates the schema in the development profile. Run each project with the `dev` profile. Production/Azure values are configured through the environment variables used by each service's `application.yaml`.
 
 ## API
 
@@ -74,4 +74,4 @@ CREATE COLLECTION `inventory`.Inventory.InventoryList;
 CREATE PRIMARY INDEX ON `inventory`.`Inventory`.`InventoryList`;
 ```
 
-For production, replace the primary index with a targeted index appropriate for the catalogue query. To reset local state, stop Compose and remove its volumes (`docker compose down -v`), then restart the services.
+For production, replace the primary index with a targeted index appropriate for the catalogue query. To reset local development state after schema/migration changes, drop or clear the service schemas (`user_service`, `inventory_service`, `notification_service`) and their Flyway history tables, then restart the services. Because development currently has no required data, resetting the schemas is safe. Restarting the services will apply each consolidated `V1__initial_schema.sql`. To reset local infrastructure, stop Compose and remove its volumes (`docker compose down -v`), then restart the services.

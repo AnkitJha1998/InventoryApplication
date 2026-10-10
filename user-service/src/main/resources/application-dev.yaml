@@ -9,10 +9,17 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/inventory
     username: postgres
-    password: postgres
+    password: root
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: user_service
   flyway:
     enabled: true
-    table: user_service_flyway_schema_history
+    schemas: user_service
+    default-schema: user_service
+    create-schemas: true
 jwt:
   secret: dev-flow2-signing-secret-change-me
   expiration-seconds: 3600

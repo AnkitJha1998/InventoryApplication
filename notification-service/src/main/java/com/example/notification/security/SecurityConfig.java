@@ -25,6 +25,10 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/notifications/back-in-stock")
                     .hasRole("CUSTOMER")
+                    .requestMatchers(HttpMethod.GET, "/notifications/count", "/notifications")
+                    .hasRole("CUSTOMER")
+                    .requestMatchers(HttpMethod.PATCH, "/notifications/read")
+                    .hasRole("CUSTOMER")
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(

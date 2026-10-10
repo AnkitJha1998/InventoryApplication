@@ -6,10 +6,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Component
+@Slf4j
 public class OutboxWorker {
     private static final int MAX_RETRIES = 4;
 
@@ -48,15 +51,28 @@ public class OutboxWorker {
     }
 
     public void publishOnce() {
+        Instant startedAt = Instant.now();
         recoverExhaustedLeases();
-        for (Event event : claim()) {
+        List<Event> events = claim();
+        if(events.isEmpty()) {
+           return;
+        }
+        log.info("[publishOnce][{}] poll start batchSize={}, fetched events: {}", startedAt, batchSize, events.size());
+        for (Event event : events) {
             try {
                 kafka.send(event.topic(), event.productId(), payload(event)).get(30, TimeUnit.SECONDS);
                 markPublished(event.eventId());
+                log.info("[publishOnce][{}] Kafka publication succeeded eventId={} topic={}",
+                        Instant.now(), event.eventId(), event.topic());
             } catch (Exception ex) {
+                log.error("[publishOnce][{}] Kafka publication failed eventId={} topic={}",
+                        Instant.now(), event.eventId(), event.topic(), ex);
                 markFailed(event.eventId(), rootMessage(ex));
             }
         }
+        long elapsedMillis = java.time.Duration.between(startedAt, Instant.now()).toMillis();
+        log.info("[publishOnce][{}] poll completion elapsedMillis={} count={}",
+                Instant.now(), elapsedMillis, events.size());
     }
 
     /**
@@ -85,11 +101,8 @@ public class OutboxWorker {
                                                             event.getTopic(),
                                                             event.getRetryCount()))
                                     .toList();
-                    candidates.forEach(
-                            event -> {
-                                event.markProcessing(leaseUntil);
-                                outboxRepository.save(event);
-                            });
+                    candidates.forEach(event -> event.markProcessing(leaseUntil));
+                    outboxRepository.saveAll(candidates);
                     return events;
                 });
     }
@@ -146,6 +159,8 @@ public class OutboxWorker {
                             timestamp,
                             event.topic()));
         } catch (JsonProcessingException e) {
+            log.error("[payload][{}] event payload serialization failed eventId={}",
+                    Instant.now(), event.eventId(), e);
             throw new IllegalStateException(e);
         }
     }

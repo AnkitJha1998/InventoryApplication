@@ -9,9 +9,19 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/inventory
     username: postgres
-    password: postgres
+    password: root
+    hikari:
+      connection-init-sql: SET search_path TO inventory_service, public
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: inventory_service
   flyway:
     enabled: true
+    schemas: inventory_service
+    default-schema: inventory_service
+    create-schemas: true
   kafka:
     bootstrap-servers: localhost:9092
     producer:
@@ -28,8 +38,8 @@ spring:
       ack-mode: manual
   couchbase:
     connection-string: couchbase://localhost
-    username: Administrator
-    password: password
+    username: admin
+    password: admin123
   data:
     couchbase:
       bucket-name: inventory

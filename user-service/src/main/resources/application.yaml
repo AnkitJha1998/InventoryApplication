@@ -7,9 +7,16 @@ spring:
     url: ${AZURE_POSTGRES_URL}
     username: ${AZURE_DB_USERNAME}
     password: ${AZURE_DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: ${USER_DB_SCHEMA:user_service}
   flyway:
     enabled: true
-    table: user_service_flyway_schema_history
+    schemas: ${USER_DB_SCHEMA:user_service}
+    default-schema: ${USER_DB_SCHEMA:user_service}
+    create-schemas: true
 jwt:
   secret: ${JWT_SECRET}
   expiration-seconds: 3600

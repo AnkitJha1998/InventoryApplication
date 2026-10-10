@@ -15,10 +15,12 @@ import com.example.inventory.persistence.repository.InventoryRepository;
 import com.example.inventory.persistence.repository.OutboxEventRepository;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
 public class InventoryServiceImpl implements InventoryService {
     private static final String INVENTORY_UPDATE_TOPIC = "InventoryUpdate";
     private static final String NOTIFICATION_TRIGGER_TOPIC = "NotificationTrigger";
@@ -39,6 +41,8 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(rollbackFor = BusinessException.class)
     public CreateResponse create(CreateRequest request) throws BusinessException {
+        log.info("[create][{}] service entry productId={}", Instant.now(),
+                request == null ? "unknown" : request.productId());
         validateCreation(request);
         if (inventoryRepository.existsById(request.productId())) {
             throw new BusinessException("inventory item already exists");
@@ -55,6 +59,9 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
         inventoryRepository.save(inventory);
         saveOutbox(inventory, 0, request.quantity(), 1, occurredAt);
+        log.info("[create][{}] inventory created productId={} version={} availableCount={}",
+                Instant.now(), inventory.getProductId(), inventory.getVersion(),
+                inventory.getAvailableCount());
         return new CreateResponse(
                 inventory.getProductId(),
                 inventory.getProductName(),
@@ -66,11 +73,16 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(rollbackFor = BusinessException.class)
     public ReductionResponse reduce(ReductionRequest request) throws BusinessException {
+        log.info("[reduce][{}] service entry orderId={} productId={}", Instant.now(),
+                request == null ? "unknown" : request.orderId(),
+                request == null ? "unknown" : request.productId());
         validateReduction(request);
 
         var existing = operationRepository.findByOrderIdAndProductId(
                 request.orderId(), request.productId());
         if (existing.isPresent()) {
+            log.info("[reduce][{}] idempotent reduction reused orderId={} productId={}",
+                    Instant.now(), request.orderId(), request.productId());
             return existingResponse(request, existing.get());
         }
 
@@ -100,6 +112,8 @@ public class InventoryServiceImpl implements InventoryService {
                         .createdAt(occurredAt)
                         .build());
         saveOutbox(inventory, previous, current, version, occurredAt);
+        log.info("[reduce][{}] inventory reduced orderId={} productId={} previousCount={} currentCount={} version={}",
+                Instant.now(), request.orderId(), request.productId(), previous, current, version);
         return new ReductionResponse(
                 request.orderId(), request.productId(), request.quantity(), previous, current, false, version);
     }
@@ -108,6 +122,8 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional(rollbackFor = {BusinessException.class, InventoryNotFoundException.class})
     public IncreaseResponse increase(IncreaseRequest request)
             throws BusinessException, InventoryNotFoundException {
+        log.info("[increase][{}] service entry productId={}", Instant.now(),
+                request == null ? "unknown" : request.productId());
         validateIncrease(request);
 
         int updated = inventoryRepository.increaseAvailableCount(
@@ -125,6 +141,8 @@ public class InventoryServiceImpl implements InventoryService {
         if (previous == 0 && inventory.getAvailableCount() > 0) {
             saveNotificationTriggerOutbox(inventory, inventory.getAvailableCount(), version, occurredAt);
         }
+        log.info("[increase][{}] inventory increased productId={} previousCount={} currentCount={} version={}",
+                Instant.now(), inventory.getProductId(), previous, inventory.getAvailableCount(), version);
         return new IncreaseResponse(inventory.getProductId(), inventory.getAvailableCount(), version);
     }
 
@@ -150,8 +168,11 @@ public class InventoryServiceImpl implements InventoryService {
             int current,
             long version,
             Instant occurredAt) {
-        outboxRepository.save(buildOutboxEvent(
-                inventory, previous, current, version, occurredAt, INVENTORY_UPDATE_TOPIC));
+        OutboxEvent event = buildOutboxEvent(
+                inventory, previous, current, version, occurredAt, INVENTORY_UPDATE_TOPIC);
+        outboxRepository.save(event);
+        log.info("[saveOutbox][{}] outbox event created eventId={} productId={} topic={} version={}",
+                Instant.now(), event.getEventId(), inventory.getProductId(), event.getTopic(), version);
     }
 
     private void saveNotificationTriggerOutbox(
@@ -159,8 +180,11 @@ public class InventoryServiceImpl implements InventoryService {
             int current,
             long version,
             Instant occurredAt) {
-        outboxRepository.save(buildOutboxEvent(
-                inventory, 0, current, version, occurredAt, NOTIFICATION_TRIGGER_TOPIC));
+        OutboxEvent event = buildOutboxEvent(
+                inventory, 0, current, version, occurredAt, NOTIFICATION_TRIGGER_TOPIC);
+        outboxRepository.save(event);
+        log.info("[saveNotificationTriggerOutbox][{}] outbox event created eventId={} productId={} topic={} version={}",
+                Instant.now(), event.getEventId(), inventory.getProductId(), event.getTopic(), version);
     }
 
     private OutboxEvent buildOutboxEvent(

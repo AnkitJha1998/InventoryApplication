@@ -33,7 +33,7 @@
 - Consume NotificationTrigger events from Kafka.
 - Find ACTIVE notification requests matching the event's productId.
 - Create an in-app notification for each matching customer.
-- Mark corresponding requests as NOTIFIED.
+- Mark corresponding back-in-stock requests as COMPLETED.
 - Record processed events to prevent duplicate notifications.
 - Handle duplicate event delivery safely.
 - Do not send email, SMS, or push notifications.
@@ -52,7 +52,11 @@ Each notification must contain:
 
 New notifications must have read set to false.
 
+Back-in-stock request status is ACTIVE or COMPLETED; notification status is CREATED (unread) or NOTIFIED (read).
+
 Notification read status is independent of notification request status.
+
+New notifications contain the exact message `<productName> is now available`.
 
 ## Notification APIs
 
@@ -74,15 +78,6 @@ Notification read status is independent of notification request status.
 - Maximum size: 100.
 - Return content, page, size, totalElements, and totalPages.
 - Include notificationId, productId, message, read, and createdAt in each item.
-
-### Mark One Notification as Read
-
-- Endpoint: PATCH /notifications/{notificationId}/read
-- Authorization: CUSTOMER
-- Mark the notification as read only if it belongs to the authenticated customer.
-- Repeated requests must be safe.
-- Return success when the notification is already read, provided it belongs to the customer.
-- Do not expose another customer's notification.
 
 ### Mark Multiple Notifications as Read
 

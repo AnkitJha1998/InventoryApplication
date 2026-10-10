@@ -6,7 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.example.notification.service.NotificationException;
-import com.example.notification.service.NotificationTriggerService;
+import com.example.notification.service.NotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
@@ -15,8 +15,21 @@ import org.springframework.kafka.support.Acknowledgment;
 
 class NotificationTriggerConsumerTest {
   @Test
+  void malformedPayloadIsAcknowledged() throws Exception {
+    NotificationService service = mock(NotificationService.class);
+    NotificationTriggerConsumer consumer =
+        new NotificationTriggerConsumer(new ObjectMapper(), service);
+    Acknowledgment acknowledgment = mock(Acknowledgment.class);
+
+    consumer.onMessage("{not-json", acknowledgment);
+
+    verify(acknowledgment).acknowledge();
+    verify(service, never()).process(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
   void databaseFailureDoesNotAcknowledge() throws Exception {
-    NotificationTriggerService service = mock(NotificationTriggerService.class);
+    NotificationService service = mock(NotificationService.class);
     ObjectMapper mapper = new ObjectMapper();
     NotificationTriggerConsumer consumer = new NotificationTriggerConsumer(mapper, service);
     Acknowledgment acknowledgment = mock(Acknowledgment.class);

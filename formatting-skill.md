@@ -73,6 +73,18 @@ User.builder()
 - Do not apply Lombok constructor annotations outside entities.
 - Keep service interfaces separate from `*Impl` classes.
 
+## Logging policy
+
+- Use Lombok `@Slf4j` for classes that log; do not create manual logger boilerplate.
+- Use only `info` and `error` levels for application logging.
+- Prefix every message with the method name and an application timestamp, for example: `[methodName][2026-01-01T10:00:00Z] message`.
+- Log service-method entry with a flow/business identifier when one exists (for example `orderId`, `productId`, `requestId`, or `eventId`); otherwise log a clear entry statement.
+- Log major business state changes at `info`, including inventory changes, request creation/completion, notification creation, version changes, and Outbox state transitions.
+- Log every caught exception at `error` with the exception object so the stack trace is preserved.
+- Outbox workers must log poll start/end timing and successful Kafka publication, including event ID and topic.
+- Do not use `debug`, `trace`, or `warn` for application logs.
+- Keep logging statements concise and avoid logging passwords, JWTs, authorization headers, or other secrets.
+
 ## Exception policy
 
 - Custom application exceptions must extend `Exception`, not `RuntimeException`.

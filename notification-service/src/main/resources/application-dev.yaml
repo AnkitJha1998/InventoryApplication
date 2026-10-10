@@ -9,11 +9,17 @@ spring:
     datasource:
         url: jdbc:postgresql://localhost:5432/inventory
         username: postgres
-        password: postgres
+        password: root
     flyway:
         enabled: true
+        schemas: notification_service
+        default-schema: notification_service
+        create-schemas: true
     jpa:
         open-in-view: false
+        properties:
+            hibernate:
+                default_schema: notification_service
     kafka:
         bootstrap-servers: localhost:9092
         consumer:

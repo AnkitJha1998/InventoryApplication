@@ -7,8 +7,18 @@ spring:
     url: ${AZURE_POSTGRES_URL}
     username: ${AZURE_DB_USERNAME}
     password: ${AZURE_DB_PASSWORD}
+    hikari:
+      connection-init-sql: SET search_path TO ${INVENTORY_DB_SCHEMA:inventory_service}, public
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: ${INVENTORY_DB_SCHEMA:inventory_service}
   flyway:
     enabled: true
+    schemas: ${INVENTORY_DB_SCHEMA:inventory_service}
+    default-schema: ${INVENTORY_DB_SCHEMA:inventory_service}
+    create-schemas: true
   kafka:
     bootstrap-servers: ${AZURE_KAFKA_BOOTSTRAP_SERVERS}
     producer:

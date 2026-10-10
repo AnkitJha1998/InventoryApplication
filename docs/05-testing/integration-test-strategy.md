@@ -102,9 +102,11 @@ Required scenarios:
 - A zero-to-positive inventory transition emits exactly one `NotificationTrigger` event; creation and positive-to-positive changes emit none.
 - The trigger contains event ID, product ID, product name, available quantity, version, and event timestamp on the exact `NotificationTrigger` topic.
 - A trigger with no active requests is idle and acknowledged without creating a notification.
-- A trigger completes every active request for the product and prepares one notification per request with exact message `<Item Name> is now available`.
+- A trigger completes every active request for the product and creates one `CREATED` notification per request with exact message `<Item Name> is now available`.
 - Duplicate event IDs are idempotent and do not create duplicate notifications.
-- Notification request, notification, and processed-event writes commit atomically; a database failure leaves the Kafka message unacknowledged for redelivery.
+- Notification request (`ACTIVE`/`COMPLETED`), notification (`CREATED`/`NOTIFIED`), and processed-event writes commit atomically; a database failure leaves the Kafka message unacknowledged for redelivery.
+- Malformed trigger payloads are acknowledged without retry, idle triggers are acknowledged without writes, and duplicate event IDs are idempotent.
+- GET count/list and PATCH bulk-read enforce customer ownership, stable pagination ordering, and updatedCount semantics; no single-read endpoint exists.
 
 ## Test data and cleanup
 
