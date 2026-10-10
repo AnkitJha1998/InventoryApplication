@@ -1,4 +1,4 @@
-package com.example.inventory.bdd;
+package com.example.inventory.api_bdd;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

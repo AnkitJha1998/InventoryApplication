@@ -1,4 +1,4 @@
-package com.example.inventory.bdd;
+package com.example.inventory.api_bdd;
 
 import com.example.inventory.security.JwtService;
 import com.example.inventory.security.SecurityConfig;
